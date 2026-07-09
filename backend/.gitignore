@@ -1,0 +1,16 @@
+# 비밀 — 절대 커밋 금지
+.env
+.env.*
+
+# 의존성 — 용량 크고 재설치 가능
+node_modules/
+
+# Prisma 생성물 — 코드에서 자동 생성됨
+generated/
+
+# 로그·OS 부산물
+*.log
+.DS_Store
+
+# Temporary debug scripts
+test-*.js

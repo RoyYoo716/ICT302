@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Alert {
+  id           String   @id @default(uuid()) 
+  qrCodeId     String
+  reporterName String?
+  contactInfo  String?
+  gpsLat       Float?
+  gpsLng       Float?
+  photoUrl     String?
+  description  String?
+  status       String   @default("new")    
+  createdAt    DateTime @default(now())
+  QrCode       QrCode   @relation(fields: [qrCodeId], references: [id])
+}
+
+model QrCode {
+  id             String    @id @default(uuid())   
+  token          String    @unique
+  label          String?   
+  destinationUrl String
+  status         String    @default("active")
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  Alert          Alert[]
+  ScanLog        ScanLog[]
+}
+
+model ScanLog {
+  id        String   @id @default(uuid()) 
+  qrCodeId  String?
+  scannedAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  gpsLat    Float?
+  gpsLng    Float?
+  result    String
+  QrCode    QrCode?  @relation(fields: [qrCodeId], references: [id])
+}
+
+model User {
+  id                  String    @id @default(uuid())       
+  email               String    @unique
+  passwordHash        String?                              
+  fullName            String?                              
+  phoneNumber         String?                              
+  role                String    @default("user")
+  organisationId      String?                              
+  resetToken          String?                              
+  resetTokenExpiresAt DateTime?                            
+  createdAt           DateTime  @default(now())
+}
+
+model ActivityLog {                                        
+  id        String   @id @default(uuid())
+  qrCodeId  String?
+  type      String
+  message   String
+  status    String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
