@@ -16,6 +16,16 @@ const FALLBACK_ADMIN = {
   initials: 'AD',
 }
 
+let cachedNewAlertNotifications = null
+
+function getNewAlertNotifications(alerts) {
+  return alerts.filter((alert) => alert.status === 'New')
+}
+
+function updateNewAlertNotificationCache(notifications) {
+  cachedNewAlertNotifications = notifications
+}
+
 function Icon({ name }) {
   const commonProps = {
     fill: 'none',
@@ -139,7 +149,6 @@ function getDisplayAdmin(admin) {
 
 export default function AdminLayout({
   activeSection = 'dashboard',
-  alertBadgeCount,
   alertNotifications,
   children,
   title = 'Dashboard',
@@ -149,8 +158,9 @@ export default function AdminLayout({
   const [admin, setAdmin] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
-  const [loadedAlertBadgeCount, setLoadedAlertBadgeCount] = useState(5)
-  const [loadedAlertNotifications, setLoadedAlertNotifications] = useState([])
+  const [loadedAlertNotifications, setLoadedAlertNotifications] = useState(
+    cachedNewAlertNotifications,
+  )
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
 
   useEffect(() => {
@@ -175,8 +185,8 @@ export default function AdminLayout({
 
   useEffect(() => {
     if (Array.isArray(alertNotifications)) {
+      updateNewAlertNotificationCache(alertNotifications)
       setLoadedAlertNotifications(alertNotifications)
-      setLoadedAlertBadgeCount(alertNotifications.length)
       return undefined
     }
 
@@ -184,11 +194,11 @@ export default function AdminLayout({
 
     async function loadAlertNotifications() {
       const response = await getAlerts()
-      const newAlerts = response.alerts.filter((alert) => alert.status === 'New')
+      const newAlerts = getNewAlertNotifications(response.alerts)
 
       if (isMounted) {
+        updateNewAlertNotificationCache(newAlerts)
         setLoadedAlertNotifications(newAlerts)
-        setLoadedAlertBadgeCount(response.newAlertCount)
       }
     }
 
@@ -198,12 +208,6 @@ export default function AdminLayout({
       isMounted = false
     }
   }, [alertNotifications])
-
-  useEffect(() => {
-    if (typeof alertBadgeCount === 'number') {
-      setLoadedAlertBadgeCount(alertBadgeCount)
-    }
-  }, [alertBadgeCount])
 
   useEffect(() => {
     if (!isNotificationOpen) {
@@ -253,11 +257,11 @@ export default function AdminLayout({
   const currentDate = formatDashboardDate(new Date())
   const currentAlertNotifications = Array.isArray(alertNotifications)
     ? alertNotifications
-    : loadedAlertNotifications
+    : loadedAlertNotifications || []
   const currentAlertCount =
-    typeof alertBadgeCount === 'number'
-      ? alertBadgeCount
-      : loadedAlertBadgeCount
+    Array.isArray(alertNotifications) || Array.isArray(loadedAlertNotifications)
+      ? currentAlertNotifications.length
+      : null
   const alertsBadge = currentAlertCount > 0 ? String(currentAlertCount) : ''
 
   if (!isLoading && !admin) {
@@ -352,7 +356,7 @@ export default function AdminLayout({
                 <section className="notification-dropdown" aria-label="New alert notifications">
                   <header>
                     <strong>Notifications</strong>
-                    <span>{currentAlertCount} new</span>
+                    <span>{currentAlertCount ?? 0} new</span>
                   </header>
 
                   {currentAlertNotifications.length > 0 ? (

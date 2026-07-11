@@ -5,6 +5,7 @@ import QRCodeGeneratedModal from '../components/qr/QRCodeGeneratedModal.jsx'
 import QRCodeTable from '../components/qr/QRCodeTable.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 import {
+  exportQRCodesCsv,
   generateQRCode,
   getQRCodes,
   updateQRCodeStatus,
@@ -26,6 +27,8 @@ export default function QRCodeManagementPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerateOpen, setIsGenerateOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
   const [generatedQRCode, setGeneratedQRCode] = useState(null)
 
   const searchTerm = searchParams.get('search') || ''
@@ -131,6 +134,28 @@ export default function QRCodeManagementPage() {
     }
   }
 
+  async function handleExportCsv() {
+    setExportError('')
+    setIsExporting(true)
+
+    try {
+      const response = await exportQRCodesCsv()
+      const objectUrl = URL.createObjectURL(response.blob)
+      const link = document.createElement('a')
+
+      link.href = objectUrl
+      link.download = response.fileName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (error) {
+      setExportError(error.message || 'Unable to export QR codes.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <AdminLayout title="QR Code Management" activeSection="qr-codes">
       <main className="qr-page">
@@ -172,15 +197,27 @@ export default function QRCodeManagementPage() {
             </select>
           </label>
 
-          <button
-            className="generate-qr-button"
-            onClick={() => setIsGenerateOpen(true)}
-            type="button"
-          >
-            <span aria-hidden="true">+</span>
-            Generate QR Code
-          </button>
+          <div className="qr-toolbar-actions">
+            <button
+              className="qr-export-button"
+              disabled={isExporting}
+              onClick={handleExportCsv}
+              type="button"
+            >
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+            <button
+              className="generate-qr-button"
+              onClick={() => setIsGenerateOpen(true)}
+              type="button"
+            >
+              <span aria-hidden="true">+</span>
+              Generate QR Code
+            </button>
+          </div>
         </div>
+
+        {exportError ? <p className="qr-export-error">{exportError}</p> : null}
 
         {isLoading ? (
           <section className="qr-table-card qr-loading-card">Loading QR codes...</section>

@@ -3,16 +3,10 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import AlertDetailModal from '../components/alerts/AlertDetailModal.jsx'
 import AlertsTable from '../components/alerts/AlertsTable.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
-import {
-  getAlertById,
-  getAlerts,
-  updateAlertEvidence,
-  updateAlertStatus,
-} from '../services/api.js'
+import { getAlertById, getAlerts, updateAlertStatus } from '../services/api.js'
 
 const PAGE_SIZE = 7
 const STATUS_OPTIONS = ['All', 'New', 'Reviewed', 'Resolved']
-const DEFAULT_NEW_ALERT_COUNT = 5
 
 function normalizePage(value) {
   const page = Number(value)
@@ -56,9 +50,7 @@ export default function AlertsPage() {
     () => alerts.filter((alert) => alert.status === 'New'),
     [alerts],
   )
-  const newAlertCount = isLoading
-    ? DEFAULT_NEW_ALERT_COUNT
-    : currentNewAlerts.length
+  const newAlertCount = isLoading ? null : currentNewAlerts.length
 
   const filteredAlerts = useMemo(() => {
     if (selectedStatus === 'All') {
@@ -147,22 +139,10 @@ export default function AlertsPage() {
     }
   }
 
-  async function handleEvidenceUpload(file) {
-    const response = await updateAlertEvidence(selectedAlert.id, file)
-
-    setSelectedAlert(response.alert)
-    setAlerts((currentAlerts) =>
-      currentAlerts.map((alert) =>
-        alert.id === selectedAlert.id ? response.alert : alert,
-      ),
-    )
-  }
-
   return (
     <AdminLayout
       activeSection="alerts"
-      alertBadgeCount={newAlertCount}
-      alertNotifications={isLoading ? undefined : currentNewAlerts}
+      alertNotifications={isLoading ? null : currentNewAlerts}
       title="Tamper Alerts"
     >
       <main className="alerts-page">
@@ -178,7 +158,7 @@ export default function AlertsPage() {
             </select>
           </label>
 
-          <p>{newAlertCount} new alerts requiring review</p>
+          <p>{newAlertCount ?? 0} new alerts requiring review</p>
         </div>
 
         {isLoading ? (
@@ -205,7 +185,6 @@ export default function AlertsPage() {
             onClose={handleCloseModal}
             onOpenQRCode={handleOpenQRCode}
             onStatusUpdate={handleAlertStatusUpdate}
-            onUploadEvidence={handleEvidenceUpload}
           />
         ) : null}
       </main>

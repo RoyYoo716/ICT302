@@ -412,7 +412,7 @@
 }
 
 .alert-evidence-empty {
-  min-height: 188px;
+  min-height: 248px;
   border: 1.5px dashed #d5dbe5;
   border-radius: 15px;
   background: #f8fafc;
@@ -431,93 +431,25 @@
   color: #cbd5e1;
 }
 
-.alert-evidence-empty p,
-.alert-evidence-empty span {
+.alert-evidence-empty p {
   margin: 0;
   font-size: var(--font-size-body-small);
   line-height: var(--line-height-body-small);
 }
 
-.alert-evidence-grid {
-  min-height: 188px;
+.alert-evidence-frame {
+  height: 248px;
   border: 1px solid #e5e7eb;
   border-radius: 15px;
   background: #f8fafc;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.alert-evidence-preview {
-  min-height: 78px;
-  margin: 0;
-  border-radius: 11px;
-  background: var(--color-white);
   overflow: hidden;
 }
 
-.alert-evidence-preview img {
+.alert-evidence-frame img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
-}
-
-.alert-evidence-preview span {
-  height: 100%;
-  color: var(--color-muted);
-  display: grid;
-  place-items: center;
-  font-size: var(--font-size-caption);
-  line-height: var(--line-height-caption);
-  padding: 8px;
-  text-align: center;
-}
-
-.alert-evidence-actions {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.alert-evidence-actions button {
-  height: 72px;
-  border: 1px solid #cbd5e1;
-  border-radius: 14px;
-  background: var(--color-white);
-  color: #475569;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-  font-size: var(--font-size-body-small);
-  font-weight: 700;
-  line-height: var(--line-height-body-small);
-  transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    color 140ms ease;
-}
-
-.alert-evidence-actions button svg {
-  width: 18px;
-  height: 18px;
-}
-
-.alert-evidence-actions button:hover,
-.alert-evidence-actions button:focus-visible {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
-  color: var(--color-primary);
-  outline: none;
-}
-
-.alert-evidence-actions button:disabled {
-  opacity: 0.62;
-  cursor: wait;
 }
 
 .alert-info-panel dl {
@@ -737,8 +669,7 @@
     width: calc(100vw - 32px);
   }
 
-  .alert-modal-footer,
-  .alert-evidence-actions {
+  .alert-modal-footer {
     grid-template-columns: 1fr;
   }
 

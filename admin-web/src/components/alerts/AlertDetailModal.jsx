@@ -1,42 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import AlertStatusBadge from './AlertStatusBadge.jsx'
-
-function UploadIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 16V4M7.5 8.5 12 4l4.5 4.5M5 20h14"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  )
-}
-
-function CameraIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4 8.5h3l1.5-2h7l1.5 2h3v10H4z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <circle
-        cx="12"
-        cy="13.5"
-        fill="none"
-        r="3"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-    </svg>
-  )
-}
 
 function EmptyImageIcon() {
   return (
@@ -90,38 +53,14 @@ export default function AlertDetailModal({
   onClose,
   onOpenQRCode,
   onStatusUpdate,
-  onUploadEvidence,
 }) {
-  const fileInputRef = useRef(null)
   const [adminNotes, setAdminNotes] = useState(alert.adminNotes || '')
   const [error, setError] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     setAdminNotes(alert.adminNotes || '')
     setError('')
   }, [alert])
-
-  function openFilePicker() {
-    fileInputRef.current?.click()
-  }
-
-  async function handleEvidenceChange(event) {
-    const [file] = Array.from(event.target.files || [])
-
-    if (!file) {
-      return
-    }
-
-    setIsUploading(true)
-
-    try {
-      await onUploadEvidence(file)
-      event.target.value = ''
-    } finally {
-      setIsUploading(false)
-    }
-  }
 
   async function handleMarkReviewed() {
     setError('')
@@ -167,52 +106,19 @@ export default function AlertDetailModal({
         <div className="alert-modal-body">
           <section className="alert-evidence-panel" aria-label="Evidence Photos">
             <h3>Evidence Photos</h3>
-            {alert.evidencePhotos.length > 0 ? (
-              <div className="alert-evidence-grid">
-                {alert.evidencePhotos.map((photo) => (
-                  <figure className="alert-evidence-preview" key={photo.id}>
-                    {photo.url ? (
-                      <img alt={photo.fileName} src={photo.url} />
-                    ) : (
-                      <span>{photo.fileName}</span>
-                    )}
-                  </figure>
-                ))}
+            {alert.evidencePhotoUrl ? (
+              <div className="alert-evidence-frame">
+                <img
+                  alt={alert.evidencePhotoFileName || `${alert.id} evidence photo`}
+                  src={alert.evidencePhotoUrl}
+                />
               </div>
             ) : (
               <div className="alert-evidence-empty">
                 <EmptyImageIcon />
-                <p>No evidence photos yet.</p>
-                <span>Upload or take a photo below.</span>
+                <p>No evidence photo available.</p>
               </div>
             )}
-
-            <input
-              accept="image/*"
-              className="sr-only"
-              onChange={handleEvidenceChange}
-              ref={fileInputRef}
-              type="file"
-            />
-
-            <div className="alert-evidence-actions">
-              <button
-                disabled={isUploading}
-                onClick={openFilePicker}
-                type="button"
-              >
-                <UploadIcon />
-                Upload Photo
-              </button>
-              <button
-                disabled={isUploading}
-                onClick={openFilePicker}
-                type="button"
-              >
-                <CameraIcon />
-                Take Photo
-              </button>
-            </div>
           </section>
 
           <section className="alert-info-panel" aria-label="Alert information">

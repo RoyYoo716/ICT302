@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 import AccountProfileCard from '../components/settings/AccountProfileCard.jsx'
-import AccountSummaryCard from '../components/settings/AccountSummaryCard.jsx'
-import DangerZoneCard from '../components/settings/DangerZoneCard.jsx'
-import LoginHistoryCard from '../components/settings/LoginHistoryCard.jsx'
 import NotificationsCard from '../components/settings/NotificationsCard.jsx'
 import PasswordSecurityCard from '../components/settings/PasswordSecurityCard.jsx'
 import {
@@ -11,7 +8,6 @@ import {
   updateAdminPassword,
   updateAdminProfile,
   updateNotificationSettings,
-  updateTwoFactorAuth,
 } from '../services/api.js'
 
 export default function SettingsPage() {
@@ -68,22 +64,8 @@ export default function SettingsPage() {
   }
 
   async function handlePasswordUpdate(payload) {
-    const response = await updateAdminPassword(payload)
-
-    setSettings((currentSettings) => ({
-      ...currentSettings,
-      security: response.security,
-    }))
+    await updateAdminPassword(payload)
     showTimedMessage(passwordTimerRef, setPasswordMessage, 'Password updated successfully.')
-  }
-
-  async function handleTwoFactorChange(enabled) {
-    const response = await updateTwoFactorAuth(enabled)
-
-    setSettings((currentSettings) => ({
-      ...currentSettings,
-      security: response.security,
-    }))
   }
 
   async function handleNotificationChange(patch) {
@@ -104,30 +86,20 @@ export default function SettingsPage() {
         {isLoading || !settings ? (
           <section className="settings-card settings-loading-card">Loading settings...</section>
         ) : (
-          <div className="settings-layout-grid">
-            <section className="settings-main-column">
-              <AccountProfileCard
-                message={profileMessage}
-                onSave={handleProfileSave}
-                profile={settings.profile}
-              />
-              <PasswordSecurityCard
-                message={passwordMessage}
-                onPasswordUpdate={handlePasswordUpdate}
-                onTwoFactorChange={handleTwoFactorChange}
-                security={settings.security}
-              />
-              <LoginHistoryCard history={settings.loginHistory} />
-            </section>
-
-            <aside className="settings-side-column">
-              <NotificationsCard
-                notifications={settings.notifications}
-                onChange={handleNotificationChange}
-              />
-              <AccountSummaryCard summary={settings.accountSummary} />
-              <DangerZoneCard />
-            </aside>
+          <div className="settings-stack">
+            <AccountProfileCard
+              message={profileMessage}
+              onSave={handleProfileSave}
+              profile={settings.profile}
+            />
+            <PasswordSecurityCard
+              message={passwordMessage}
+              onPasswordUpdate={handlePasswordUpdate}
+            />
+            <NotificationsCard
+              notifications={settings.notifications}
+              onChange={handleNotificationChange}
+            />
           </div>
         )}
       </main>

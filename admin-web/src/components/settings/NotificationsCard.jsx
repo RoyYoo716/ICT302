@@ -2,7 +2,7 @@ import ToggleSwitch from './ToggleSwitch.jsx'
 
 export default function NotificationsCard({ notifications, onChange }) {
   return (
-    <section className="settings-card settings-side-card">
+    <section className="settings-card">
       <header className="settings-card-header">
         <div>
           <h2>Notifications</h2>

@@ -290,120 +290,130 @@ const INITIAL_ALERTS = [
     qrCodeId: 'QR-003',
     userName: 'John Doe',
     contact: 'reporter@anonymous.sg',
-    gpsLocation: '1.3521°N, 103.8198°E',
+    gpsLocation: '1.3521掳N, 103.8198掳E',
     description: 'Sticker replaced over original QR code with a different one',
     status: 'New',
     submittedAt: '2026-06-24 09:14',
     adminNotes: '',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-001'),
+    evidencePhotoFileName: 'ALT-001-evidence.jpg',
   },
   {
     id: 'ALT-002',
     qrCodeId: 'QR-007',
     userName: 'Anonymous',
     contact: 'reporter@anonymous.sg',
-    gpsLocation: '1.2987°N, 103.8512°E',
+    gpsLocation: '1.2987掳N, 103.8512掳E',
     description: 'QR code damaged, partially obscured by physical sticker',
     status: 'New',
     submittedAt: '2026-06-24 10:32',
     adminNotes: '',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-002'),
+    evidencePhotoFileName: 'ALT-002-evidence.jpg',
   },
   {
     id: 'ALT-003',
     qrCodeId: 'QR-001',
     userName: 'Mary Tan',
     contact: 'mary.tan@example.com',
-    gpsLocation: '1.4123°N, 103.8234°E',
+    gpsLocation: '1.4123掳N, 103.8234掳E',
     description: 'Fake QR overlay placed on top of legitimate code',
     status: 'Reviewed',
     submittedAt: '2026-06-23 14:55',
     adminNotes: 'Store manager contacted for verification.',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-003'),
+    evidencePhotoFileName: 'ALT-003-evidence.jpg',
   },
   {
     id: 'ALT-004',
     qrCodeId: 'QR-004',
     userName: 'Peter Lim',
     contact: 'reporter@anonymous.sg',
-    gpsLocation: '1.3567°N, 103.9123°E',
+    gpsLocation: '1.3567掳N, 103.9123掳E',
     description: 'Suspicious link redirecting to unknown payment portal',
     status: 'Resolved',
     submittedAt: '2026-06-22 16:20',
     adminNotes: 'Confirmed duplicate report and closed.',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-004'),
+    evidencePhotoFileName: 'ALT-004-evidence.jpg',
   },
   {
     id: 'ALT-005',
     qrCodeId: 'QR-009',
     userName: 'Sarah Wong',
     contact: 'sarah.wong@example.com',
-    gpsLocation: '1.3198°N, 103.8456°E',
+    gpsLocation: '1.3198掳N, 103.8456掳E',
     description: 'Covered with sticker, destination URL appears altered',
     status: 'New',
     submittedAt: '2026-06-24 11:47',
     adminNotes: '',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-005'),
+    evidencePhotoFileName: 'ALT-005-evidence.jpg',
   },
   {
     id: 'ALT-006',
     qrCodeId: 'QR-003',
     userName: 'Ahmad R.',
     contact: 'ahmad.r@example.com',
-    gpsLocation: '1.3456°N, 103.8765°E',
+    gpsLocation: '1.3456掳N, 103.8765掳E',
     description: 'URL looks fake, redirecting to phishing site mirror',
     status: 'Reviewed',
     submittedAt: '2026-06-23 08:30',
     adminNotes: 'Escalated to security review queue.',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-006'),
+    evidencePhotoFileName: 'ALT-006-evidence.jpg',
   },
   {
     id: 'ALT-007',
     qrCodeId: 'QR-010',
     userName: 'Anonymous',
     contact: 'reporter@anonymous.sg',
-    gpsLocation: '1.2897°N, 103.8321°E',
+    gpsLocation: '1.2897掳N, 103.8321掳E',
     description: 'QR code cut out and replaced at restaurant table',
     status: 'Resolved',
     submittedAt: '2026-06-21 19:05',
     adminNotes: 'Resolved after venue replaced the printed code.',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-007'),
+    evidencePhotoFileName: 'ALT-007-evidence.jpg',
   },
   {
     id: 'ALT-008',
     qrCodeId: 'QR-005',
     userName: 'Lila Chen',
     contact: 'lila.chen@example.com',
-    gpsLocation: '1.3024°N, 103.7891°E',
+    gpsLocation: '1.3024掳N, 103.7891掳E',
     description: 'Scanned code opens unrelated promotional page',
     status: 'New',
     submittedAt: '2026-06-24 12:18',
     adminNotes: '',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-008'),
+    evidencePhotoFileName: 'ALT-008-evidence.jpg',
   },
   {
     id: 'ALT-009',
     qrCodeId: 'QR-008',
     userName: 'Security Staff',
     contact: 'security@example.com',
-    gpsLocation: '1.3611°N, 103.8864°E',
+    gpsLocation: '1.3611掳N, 103.8864掳E',
     description: 'Phishing confirmed by internal security team',
     status: 'Reviewed',
     submittedAt: '2026-06-23 18:42',
     adminNotes: 'Pending final closure.',
-    evidencePhotos: [],
+    evidencePhotoUrl: createEvidencePhotoUrl('ALT-009'),
+    evidencePhotoFileName: 'ALT-009-evidence.jpg',
   },
   {
     id: 'ALT-010',
     qrCodeId: 'QR-006',
     userName: 'Vanessa Lee',
     contact: 'vanessa.lee@example.com',
-    gpsLocation: '1.3745°N, 103.9020°E',
+    gpsLocation: '1.3745掳N, 103.9020掳E',
     description: 'Printed QR code appears tampered near entrance display',
     status: 'New',
     submittedAt: '2026-06-24 13:05',
     adminNotes: '',
-    evidencePhotos: [],
+    evidencePhotoUrl: '',
+    evidencePhotoFileName: '',
   },
 ]
 
@@ -524,64 +534,12 @@ const INITIAL_ADMIN_SETTINGS = {
     status: 'Active',
   },
   security: {
-    lastChangedRelative: '30 days ago',
-    lastChangedDate: '2026-05-26',
-    twoFactorEnabled: true,
     currentPassword: 'admin123',
   },
   notifications: {
     emailAlerts: true,
     newAlertReports: true,
   },
-  accountSummary: {
-    userId: 'USR-001',
-    accountType: 'Government',
-    memberSince: 'Jan 15, 2024',
-    department: 'Cybersecurity',
-    accessLevel: 'Level 5 - Full',
-  },
-  loginHistory: [
-    {
-      id: 'login-1',
-      device: 'Chrome / macOS',
-      location: 'Singapore',
-      ip: '103.12.45.67',
-      status: 'Success',
-      dateTime: '2026-06-25 08:42',
-    },
-    {
-      id: 'login-2',
-      device: 'Chrome / macOS',
-      location: 'Singapore',
-      ip: '103.12.45.67',
-      status: 'Success',
-      dateTime: '2026-06-24 17:11',
-    },
-    {
-      id: 'login-3',
-      device: 'Safari / iOS',
-      location: 'Singapore',
-      ip: '118.200.45.90',
-      status: 'Success',
-      dateTime: '2026-06-23 09:03',
-    },
-    {
-      id: 'login-4',
-      device: 'Chrome / macOS',
-      location: 'Singapore',
-      ip: '103.12.45.67',
-      status: 'Success',
-      dateTime: '2026-06-22 14:55',
-    },
-    {
-      id: 'login-5',
-      device: 'Firefox / Windows',
-      location: 'Malaysia',
-      ip: '175.43.67.12',
-      status: 'Failed',
-      dateTime: '2026-06-21 22:10',
-    },
-  ],
 }
 
 function wait() {
@@ -788,6 +746,29 @@ function createMockQrImage(seed) {
   return canvas.toDataURL('image/png')
 }
 
+function createEvidencePhotoUrl(label) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320">
+    <defs>
+      <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#dbeafe" />
+        <stop offset="100%" stop-color="#f8fafc" />
+      </linearGradient>
+    </defs>
+    <rect width="480" height="320" fill="url(#sky)" />
+    <rect x="72" y="54" width="336" height="212" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="5" />
+    <rect x="126" y="92" width="128" height="128" rx="8" fill="#111827" />
+    <rect x="142" y="108" width="96" height="96" rx="6" fill="#ffffff" />
+    <rect x="154" y="120" width="72" height="72" rx="4" fill="#111827" />
+    <rect x="278" y="104" width="76" height="14" rx="7" fill="#94a3b8" />
+    <rect x="278" y="134" width="86" height="14" rx="7" fill="#94a3b8" />
+    <rect x="278" y="164" width="58" height="14" rx="7" fill="#94a3b8" />
+    <rect x="96" y="238" width="288" height="18" rx="9" fill="#fee2e2" />
+    <text x="240" y="286" fill="#475569" font-family="Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle">${label} evidence photo</text>
+  </svg>`
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 function buildVerifyUrl(id) {
   return `${MOCK_VERIFY_BASE_URL}mock-token-${id.toLowerCase()}`
 }
@@ -811,9 +792,18 @@ function cloneQRCodes(qrCodes) {
 }
 
 function cloneAlert(alert) {
+  const legacyEvidencePhoto = Array.isArray(alert.evidencePhotos)
+    ? alert.evidencePhotos.find((photo) => photo?.url)
+    : null
+  const alertFields = { ...alert }
+  delete alertFields.evidencePhotos
+
   return {
-    ...alert,
-    evidencePhotos: alert.evidencePhotos.map((photo) => ({ ...photo })),
+    ...alertFields,
+    user: alert.user || alert.userName,
+    evidencePhotoUrl: alert.evidencePhotoUrl || legacyEvidencePhoto?.url || '',
+    evidencePhotoFileName:
+      alert.evidencePhotoFileName || legacyEvidencePhoto?.fileName || '',
   }
 }
 
@@ -836,14 +826,24 @@ function cloneUsers(users) {
 function cloneAdminSettings(settings) {
   return {
     profile: { ...settings.profile },
-    security: {
-      lastChangedRelative: settings.security.lastChangedRelative,
-      lastChangedDate: settings.security.lastChangedDate,
-      twoFactorEnabled: settings.security.twoFactorEnabled,
-    },
     notifications: { ...settings.notifications },
-    accountSummary: { ...settings.accountSummary },
-    loginHistory: settings.loginHistory.map((entry) => ({ ...entry })),
+  }
+}
+
+function normalizeAdminSettings(settings = INITIAL_ADMIN_SETTINGS) {
+  return {
+    profile: {
+      ...INITIAL_ADMIN_SETTINGS.profile,
+      ...(settings.profile || {}),
+    },
+    security: {
+      currentPassword:
+        settings.security?.currentPassword || INITIAL_ADMIN_SETTINGS.security.currentPassword,
+    },
+    notifications: {
+      ...INITIAL_ADMIN_SETTINGS.notifications,
+      ...(settings.notifications || {}),
+    },
   }
 }
 
@@ -872,10 +872,7 @@ function loadAlerts() {
     const storedAlerts = JSON.parse(readStorage(ALERTS_KEY))
 
     if (Array.isArray(storedAlerts) && storedAlerts.length > 0) {
-      return storedAlerts.map((alert) => ({
-        ...alert,
-        evidencePhotos: Array.isArray(alert.evidencePhotos) ? alert.evidencePhotos : [],
-      }))
+      return storedAlerts.map(cloneAlert)
     }
   } catch {
     // Fall back to seed data below.
@@ -915,20 +912,13 @@ function loadAdminSettings() {
     const storedSettings = JSON.parse(readStorage(ADMIN_SETTINGS_KEY))
 
     if (storedSettings?.profile && storedSettings?.security) {
-      return storedSettings
+      return normalizeAdminSettings(storedSettings)
     }
   } catch {
     // Fall back to seed data below.
   }
 
-  const initialSettings = {
-    ...INITIAL_ADMIN_SETTINGS,
-    profile: { ...INITIAL_ADMIN_SETTINGS.profile },
-    security: { ...INITIAL_ADMIN_SETTINGS.security },
-    notifications: { ...INITIAL_ADMIN_SETTINGS.notifications },
-    accountSummary: { ...INITIAL_ADMIN_SETTINGS.accountSummary },
-    loginHistory: INITIAL_ADMIN_SETTINGS.loginHistory.map((entry) => ({ ...entry })),
-  }
+  const initialSettings = normalizeAdminSettings()
 
   saveAdminSettings(initialSettings)
   return initialSettings
@@ -956,19 +946,29 @@ function formatDate(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-function readEvidenceFile(file) {
-  const FileReaderRef = globalThis.FileReader || globalThis.window?.FileReader
+function escapeCsvValue(value) {
+  const text = String(value ?? '')
+  const escapedText = text.replace(/"/g, '""')
 
-  if (!FileReaderRef) {
-    return Promise.resolve('')
+  return /[",\r\n]/.test(escapedText) ? `"${escapedText}"` : escapedText
+}
+
+function buildCsv(headers, rows) {
+  return [
+    headers.map(escapeCsvValue).join(','),
+    ...rows.map((row) => row.map(escapeCsvValue).join(',')),
+  ].join('\r\n')
+}
+
+function createCsvBlob(csv) {
+  const BlobRef = globalThis.Blob || globalThis.window?.Blob
+
+  if (!BlobRef) {
+    throw new Error('CSV export is not supported in this browser.')
   }
 
-  return new Promise((resolve) => {
-    const reader = new FileReaderRef()
-
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = () => resolve('')
-    reader.readAsDataURL(file)
+  return new BlobRef([`\ufeff${csv}`], {
+    type: 'text/csv;charset=utf-8',
   })
 }
 
@@ -992,7 +992,10 @@ function getNextQRCodeId(qrCodes) {
   return `QR-${String(nextNumber).padStart(3, '0')}`
 }
 
-// Future backend endpoint: POST /api/auth/login
+// Provisional endpoint — to be confirmed with backend team.
+// POST /api/auth/login
+// Payload: { email, password }
+// Expected response: { admin }
 // Purpose: authenticate an admin user and return the current admin profile.
 export async function loginAdmin({ email, password }) {
   await wait()
@@ -1017,9 +1020,11 @@ export async function loginAdmin({ email, password }) {
   throw new Error('Invalid email or password.')
 }
 
-// Future backend endpoint: POST /api/auth/register
+// Provisional endpoint — to be confirmed with backend team.
+// POST /api/auth/register
+// Payload: { fullName, email, phone, role, password }
+// Expected response: { admin }
 // Purpose: create a staff account request/profile for admin web access.
-// Provisional: endpoint and approval flow to be confirmed with backend team.
 export async function registerAdmin({ fullName, email, phone, role, password }) {
   await wait()
 
@@ -1047,7 +1052,10 @@ export async function registerAdmin({ fullName, email, phone, role, password }) 
   return { admin: toPublicAdmin(admin) }
 }
 
-// Future backend endpoint: POST /api/auth/logout
+// Provisional endpoint — to be confirmed with backend team.
+// POST /api/auth/logout
+// Payload: none
+// Expected response: { success }
 // Purpose: clear the current admin session.
 export async function logoutAdmin() {
   await wait()
@@ -1055,31 +1063,41 @@ export async function logoutAdmin() {
   return { success: true }
 }
 
-// Future backend endpoint: GET /api/auth/me
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/auth/me
+// Payload: none
+// Expected response: admin profile or null
 // Purpose: return the current authenticated admin profile.
 export async function getCurrentAdmin() {
   await wait()
   return readSession()
 }
 
-// Future backend endpoint: GET /api/metrics
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/metrics
+// Payload: none
+// Expected response: dashboard metric cards, scan volume, status distribution, and recent activity.
 // Purpose: return dashboard metric cards, scan volume chart data, QR status distribution, and recent activity.
 export async function getMetrics() {
   await wait()
   return DASHBOARD_METRICS
 }
 
-// Future backend endpoint: GET /api/qr
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/qr
+// Payload: none
+// Expected response: { qrCodes }
 // Purpose: return QR code list for Admin Web.
-// Provisional: endpoint to be confirmed with backend team.
 export async function getQRCodes() {
   await wait()
   return { qrCodes: cloneQRCodes(loadQRCodes()) }
 }
 
-// Future backend endpoint: GET /api/qr/:id
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/qr/:id
+// Payload: route param { id }
+// Expected response: { qrCode }
 // Purpose: return one QR code detail.
-// Provisional: endpoint to be confirmed with backend team.
 export async function getQRCodeById(id) {
   await wait()
 
@@ -1092,10 +1110,11 @@ export async function getQRCodeById(id) {
   return { qrCode: cloneQRCode(qrCode) }
 }
 
-// Future backend endpoint: POST /api/qr/generate
+// Provisional endpoint — to be confirmed with backend team.
+// POST /api/qr/generate
 // Payload: { destinationUrl, expiryDuration }
+// Expected response: { qrCode }
 // Purpose: generate new secure QR code.
-// Provisional: endpoint and generated token contract to be confirmed with backend team.
 export async function generateQRCode({ destinationUrl, expiryDuration }) {
   await wait()
 
@@ -1127,10 +1146,11 @@ export async function generateQRCode({ destinationUrl, expiryDuration }) {
   return { qrCode: cloneQRCode(qrCode) }
 }
 
-// Future backend endpoint: PATCH /api/qr/:id/status
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/qr/:id/status
 // Payload: { status }
+// Expected response: { qrCode }
 // Purpose: activate or blacklist QR code.
-// Provisional: endpoint and allowed status transitions to be confirmed with backend team.
 export async function updateQRCodeStatus(id, status) {
   await wait()
 
@@ -1149,9 +1169,37 @@ export async function updateQRCodeStatus(id, status) {
   return { qrCode: cloneQRCode(updatedQRCode) }
 }
 
-// Future backend endpoint: GET /api/alerts
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/qr/export
+// Payload: none
+// Expected response: text/csv containing all QR code records.
+// Purpose: export all QR Code records as a CSV file; backend should return all records, not one page.
+export async function exportQRCodesCsv() {
+  await wait()
+
+  const qrCodes = loadQRCodes()
+  const headers = ['QR ID', 'Destination URL', 'Status', 'Expiry Date', 'Scans', 'Alerts']
+  const rows = qrCodes.map((qrCode) => [
+    qrCode.id,
+    qrCode.destinationUrl,
+    qrCode.status,
+    qrCode.expiryDate,
+    qrCode.scans,
+    qrCode.alerts,
+  ])
+  const csv = buildCsv(headers, rows)
+
+  return {
+    blob: createCsvBlob(csv),
+    fileName: `vafpqr-qr-codes-${formatDate(new Date())}.csv`,
+  }
+}
+
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/alerts
+// Payload: none
+// Expected response: { alerts, newAlertCount }
 // Purpose: return tamper alert list for Admin Web.
-// Provisional: endpoint and response fields to be confirmed with backend team.
 export async function getAlerts() {
   await wait()
 
@@ -1163,9 +1211,11 @@ export async function getAlerts() {
   }
 }
 
-// Future backend endpoint: GET /api/alerts/:id
-// Purpose: return one alert detail.
-// Provisional: endpoint and response fields to be confirmed with backend team.
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/alerts/:id
+// Payload: route param { id }
+// Expected response: { alert: { id, qrCodeId, user, contact, gpsLocation, description, status, submittedAt, adminNotes, evidencePhotoUrl } }
+// Purpose: return the full tamper report, including photo evidence previously uploaded by the Mobile App user.
 export async function getAlertById(id) {
   await wait()
 
@@ -1178,10 +1228,11 @@ export async function getAlertById(id) {
   return { alert: cloneAlert(alert) }
 }
 
-// Future backend endpoint: PATCH /api/alerts/:id/status
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/alerts/:id/status
 // Payload: { status, adminNotes }
+// Expected response: { alert, newAlertCount }
 // Purpose: mark alert as Reviewed or Resolved and save admin notes.
-// Provisional: endpoint and allowed status transitions to be confirmed with backend team.
 export async function updateAlertStatus(id, payload) {
   await wait()
 
@@ -1209,57 +1260,22 @@ export async function updateAlertStatus(id, payload) {
   }
 }
 
-// Future backend endpoint: POST /api/alerts/:id/evidence
-// Purpose: upload evidence photo for an alert.
-// For now this is mock only.
-// Provisional: endpoint and upload payload format to be confirmed with backend team.
-export async function updateAlertEvidence(id, file) {
-  await wait()
-
-  const alerts = loadAlerts()
-  const targetAlert = alerts.find((alert) => alert.id === id)
-
-  if (!targetAlert) {
-    throw new Error('Alert not found.')
-  }
-
-  const imageUrl = await readEvidenceFile(file)
-  const evidence = {
-    id: `mock-evidence-${Date.now()}`,
-    fileName: file.name || 'evidence-photo',
-    url: imageUrl,
-    uploadedAt: formatDateTime(new Date()),
-  }
-  const nextAlerts = alerts.map((alert) =>
-    alert.id === id
-      ? {
-          ...alert,
-          evidencePhotos: [...alert.evidencePhotos, evidence],
-        }
-      : alert,
-  )
-  const updatedAlert = nextAlerts.find((alert) => alert.id === id)
-
-  saveAlerts(nextAlerts)
-
-  return {
-    alert: cloneAlert(updatedAlert),
-    evidence: { ...evidence },
-  }
-}
-
-// Future backend endpoint: GET /api/users
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/users
+// Payload: none
+// Expected response: { users }
 // Purpose: return admin user list.
-// Provisional: endpoint and response fields to be confirmed with backend team.
 export async function getUsers() {
   await wait()
 
   return { users: cloneUsers(loadUsers()) }
 }
 
-// Future backend endpoint: GET /api/users/:id
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/users/:id
+// Payload: route param { id }
+// Expected response: { user }
 // Purpose: return one admin user profile.
-// Provisional: endpoint and response fields to be confirmed with backend team.
 export async function getUserById(id) {
   await wait()
 
@@ -1272,9 +1288,11 @@ export async function getUserById(id) {
   return { user: cloneUser(user) }
 }
 
-// Future backend endpoint: POST /api/users
+// Provisional endpoint — to be confirmed with backend team.
+// POST /api/users
+// Payload: { fullName, email, role, status, password, twoFactorEnabled }
+// Expected response: { user }
 // Purpose: create a new admin user.
-// Provisional: endpoint, approval flow, and password contract to be confirmed with backend team.
 export async function createUser(payload) {
   await wait()
 
@@ -1300,9 +1318,11 @@ export async function createUser(payload) {
   return { user: cloneUser(user) }
 }
 
-// Future backend endpoint: PATCH /api/users/:id
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/users/:id
+// Payload: { fullName, email, role, status, twoFactorEnabled }
+// Expected response: { user }
 // Purpose: update user profile, role, status, and 2FA setting.
-// Provisional: endpoint and editable fields to be confirmed with backend team.
 export async function updateUser(id, payload) {
   await wait()
 
@@ -1330,9 +1350,11 @@ export async function updateUser(id, payload) {
   return { user: cloneUser(updatedUser) }
 }
 
-// Future backend endpoint: PATCH /api/users/:id/password
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/users/:id/password
+// Payload: { password }
+// Expected response: { success }
 // Purpose: reset user password.
-// Provisional: endpoint and password policy to be confirmed with backend team.
 export async function resetUserPassword(id, payload) {
   await wait()
 
@@ -1356,9 +1378,11 @@ export async function resetUserPassword(id, payload) {
   return { success: true }
 }
 
-// Future backend endpoint: PATCH /api/users/:id/status
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/users/:id/status
+// Payload: { status }
+// Expected response: { user }
 // Purpose: suspend or restore user account.
-// Provisional: endpoint and allowed status transitions to be confirmed with backend team.
 export async function updateUserStatus(id, status) {
   await wait()
 
@@ -1377,19 +1401,22 @@ export async function updateUserStatus(id, status) {
   return { user: cloneUser(updatedUser) }
 }
 
-// Future backend endpoint: GET /api/admin/settings
-// Purpose: return admin profile, security settings, notification preferences, account summary, and login history.
-// Provisional: endpoint and response fields to be confirmed with backend team.
+// Provisional endpoint — to be confirmed with backend team.
+// GET /api/admin/settings
+// Payload: none
+// Expected response: { settings: { profile, notifications } }
+// Purpose: return current admin profile and notification preferences.
 export async function getAdminSettings() {
   await wait()
 
   return { settings: cloneAdminSettings(loadAdminSettings()) }
 }
 
-// Future backend endpoint: PATCH /api/admin/profile
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/admin/profile
 // Payload: { fullName, email, phone }
+// Expected response: { profile }
 // Purpose: update current admin profile.
-// Provisional: endpoint and editable profile fields to be confirmed with backend team.
 export async function updateAdminProfile(payload) {
   await wait()
 
@@ -1409,10 +1436,11 @@ export async function updateAdminProfile(payload) {
   return { profile: { ...nextSettings.profile } }
 }
 
-// Future backend endpoint: PATCH /api/admin/password
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/admin/password
 // Payload: { currentPassword, newPassword }
+// Expected response: { success }
 // Purpose: verify current password and update password.
-// Provisional: endpoint and password policy to be confirmed with backend team.
 export async function updateAdminPassword(payload) {
   await wait()
 
@@ -1431,43 +1459,19 @@ export async function updateAdminPassword(payload) {
     security: {
       ...settings.security,
       currentPassword: payload.newPassword,
-      lastChangedDate: formatDate(new Date()),
-      lastChangedRelative: 'Today',
     },
   }
 
   saveAdminSettings(nextSettings)
 
-  return {
-    security: cloneAdminSettings(nextSettings).security,
-  }
+  return { success: true }
 }
 
-// Future backend endpoint: PATCH /api/admin/security/2fa
-// Payload: { enabled }
-// Purpose: enable or disable 2FA for current admin.
-// Provisional: endpoint and verification flow to be confirmed with backend team.
-export async function updateTwoFactorAuth(enabled) {
-  await wait()
-
-  const settings = loadAdminSettings()
-  const nextSettings = {
-    ...settings,
-    security: {
-      ...settings.security,
-      twoFactorEnabled: Boolean(enabled),
-    },
-  }
-
-  saveAdminSettings(nextSettings)
-
-  return { security: cloneAdminSettings(nextSettings).security }
-}
-
-// Future backend endpoint: PATCH /api/admin/notifications
+// Provisional endpoint — to be confirmed with backend team.
+// PATCH /api/admin/notifications
 // Payload: { emailAlerts, newAlertReports }
+// Expected response: { notifications }
 // Purpose: update notification preferences.
-// Provisional: endpoint and notification channels to be confirmed with backend team.
 export async function updateNotificationSettings(payload) {
   await wait()
 
