@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -27,4 +28,5 @@
   "devDependencies": {
     "nodemon": "^3.1.14"
   }
+  
 }
