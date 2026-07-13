@@ -30,10 +30,6 @@ export default function InvalidResult({ result }) {
           </dd>
         </div>
       </dl>
-
-      <button className="secondary-action" type="button">
-        Report This QR Code
-      </button>
     </section>
   )
 }
