@@ -12,21 +12,15 @@ export default function InvalidResult({ result }) {
 
       <dl className="details-box details-box--invalid">
         <div className="details-row">
-          <dt>QR ID</dt>
-          <dd>{result.qrId || 'Unavailable'}</dd>
-        </div>
-        <div className="details-row">
           <dt>Status</dt>
           <dd>
-            <span className="status-badge status-badge--danger">
-              {result.status || 'Unavailable'}
-            </span>
+            <span className="status-badge status-badge--danger">Flagged</span>
           </dd>
         </div>
         <div className="details-row">
           <dt>Reason</dt>
           <dd className="details-danger-text">
-            {result.reason || 'Unavailable'}
+            {result.reason || 'This code failed verification.'}
           </dd>
         </div>
       </dl>
