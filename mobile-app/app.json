@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "VAFPQR",
+    "slug": "vafpqr-mobile-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "vafpqr",
+    "userInterfaceStyle": "dark",
+    "platforms": [
+      "android"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.vafpqr.mobile",
+      "jsEngine": "jsc",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow VAFPQR to access your camera for QR scanning.",
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow VAFPQR to select QR codes and evidence photos.",
+          "cameraPermission": "Allow VAFPQR to take evidence photos."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow VAFPQR to attach GPS location to QR code reports."
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "948475ed-9764-4da8-b41d-682295f0c28e"
+      }
+    }
+  }
+}
