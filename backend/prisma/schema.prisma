@@ -21,13 +21,15 @@ model Alert {
 }
 
 model QrCode {
-  id             String    @id @default(uuid())   
+  id             String    @id @default(uuid())
   token          String    @unique
-  label          String?   
+  label          String?
   destinationUrl String
   status         String    @default("active")
   expiresAt      DateTime?
   createdAt      DateTime  @default(now())
+  createdById    String?
+  createdBy      User?     @relation(fields: [createdById], references: [id])
   Alert          Alert[]
   ScanLog        ScanLog[]
 }
@@ -45,24 +47,24 @@ model ScanLog {
 }
 
 model User {
-  id                  String    @id @default(uuid())       
+  id                  String    @id @default(uuid())
   email               String    @unique
-  passwordHash        String?                              
-  fullName            String?                              
-  phoneNumber         String?                              
+  passwordHash        String?
+  fullName            String?
+  phoneNumber         String?
   role                String    @default("user")
-  organisationId      String?                              
-  resetToken          String?                              
-  resetTokenExpiresAt DateTime?                            
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+  lastLogin           DateTime?
   createdAt           DateTime  @default(now())
+  QrCode              QrCode[]
 }
 
-model ActivityLog {                                        
+model ActivityLog {
   id        String   @id @default(uuid())
   qrCodeId  String?
   type      String
   message   String
   status    String?
-  ipAddress String?
   createdAt DateTime @default(now())
 }

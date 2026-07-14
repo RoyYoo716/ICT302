@@ -20,6 +20,7 @@ router.post('/generate', requireAdmin, async (req, res) => {
       destinationUrl,
       label,
       expiryHours: expiryHours ? Number(expiryHours) : null,
+      createdById: req.user.userId,
     });
     res.status(201).json(qr);
   } catch (err) {
