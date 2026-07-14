@@ -9,3 +9,5 @@ generated/
 .DS_Store
 
 test-*.js
+
+landing-dist/

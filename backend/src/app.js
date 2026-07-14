@@ -20,8 +20,8 @@ app.use('/api/qr', require('./routes/qr'));
 app.use('/api/alert', require('./routes/alert'));
 app.use('/api/admin', require('./routes/admin'));
 
-// Static: Landing Page (built by Vite → landing-web/dist).
+// Static: Landing Page (Vite build copied into backend/landing-dist at deploy).
 // Browser users arrive here via the redirect from GET /api/qr/verify.
-app.use('/landing', express.static(path.join(__dirname, '../../landing-web/dist')));
+app.use('/landing', express.static(path.join(__dirname, '../landing-dist')));
 
 module.exports = app;
