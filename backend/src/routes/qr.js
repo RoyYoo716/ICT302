@@ -20,6 +20,7 @@ router.post('/generate', requireAdmin, async (req, res) => {
       destinationUrl,
       label,
       expiryHours: expiryHours ? Number(expiryHours) : null,
+      createdById: req.user.userId,
     });
     res.status(201).json(qr);
   } catch (err) {
@@ -40,31 +41,16 @@ router.get('/verify', async (req, res) => {
       return res.json(result);
     }
 
-    // Browser: return a simple Landing Page (HTML).
-    // (This is a minimal placeholder; the polished React page comes later.)
-    const isValid = result.status === 'valid';
-    const color = isValid ? '#16a34a' : '#dc2626';
-    const heading = isValid ? '✅ Verified' : '⚠️ Warning';
-    const message = isValid
-      ? 'This QR code is authentic.'
-      : `This QR code is not safe: ${result.reason}`;
-
-    return res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Secure QR Verification</title>
-      </head>
-      <body style="font-family: system-ui; text-align: center; padding: 40px;">
-        <h1 style="color: ${color};">${heading}</h1>
-        <p>${message}</p>
-        ${isValid ? '<p>To continue, please install the Secure QR app.</p>' : ''}
-        <button>Download App</button>
-      </body>
-      </html>
-    `);
+     // Browser: redirect to the Landing Page with the verify result.
+    // Verification and scan logging already happened above — the landing
+    // page only DISPLAYS the result (never re-verifies; avoids double logs).
+    const params = new URLSearchParams();
+    params.set('valid', result.status === 'valid' ? 'true' : 'false');
+    if (result.reason) params.set('reason', result.reason);
+    if (process.env.APK_DOWNLOAD_URL) params.set('apk', process.env.APK_DOWNLOAD_URL);
+    // NOTE: destinationUrl is deliberately NOT passed — browser users
+    // never receive the destination (app-required model).
+    return res.redirect(`/landing/?${params.toString()}`);
   } catch (err) {
     console.error('QR verify error:', err);
     res.status(500).send('Verification failed');

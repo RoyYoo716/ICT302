@@ -15,7 +15,7 @@ export default function QRVerificationPage() {
     return {
       valid: params.get('valid') === 'true',
       reason: params.get('reason'),
-      destinationUrl: null, // browser users never see the destination
+      apkUrl: params.get('apk'),
     }
   }, [])
 

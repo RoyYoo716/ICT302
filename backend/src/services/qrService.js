@@ -14,7 +14,7 @@ function buildVerifyUrl(token) {
 
 // Create a new QR code: sign token -> save record -> render PNG.
 // options: { destinationUrl, label, expiryHours }
-async function createQrCode({ destinationUrl, label, expiryHours }) {
+async function createQrCode({ destinationUrl, label, expiryHours, createdById }) {
   // 1. Create the DB record first so we have a stable qrCodeId.
   //    Token is filled in a moment later (we need the record id in the token).
   const record = await prisma.qrCode.create({
@@ -26,6 +26,7 @@ async function createQrCode({ destinationUrl, label, expiryHours }) {
       expiresAt: expiryHours
         ? new Date(Date.now() + expiryHours * 60 * 60 * 1000)
         : null,
+      createdById: createdById || null,
     },
   });
 
@@ -52,6 +53,7 @@ async function createQrCode({ destinationUrl, label, expiryHours }) {
     destinationUrl: updated.destinationUrl,
     status: updated.status,
     expiresAt: updated.expiresAt,
+    createdById: updated.createdById,
     verifyUrl,
     qrImage, // base64 PNG data URL, ready to display or download
   };

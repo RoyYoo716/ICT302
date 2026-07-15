@@ -77,11 +77,16 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
     const token = signAuthToken({ userId: user.id, role: user.role });
 
     res.json({
       token,
-      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role },
+      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, lastlogin: user.lastLogin },
     });
   } catch (err) {
     console.error('Login error:', err);
