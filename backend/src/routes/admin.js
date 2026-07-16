@@ -376,28 +376,42 @@ router.get('/metrics', async (req, res) => {
       prisma.qrCode.count({ where: { createdAt: { gte: prev7Start, lt: last7Start } } }),
     ]);
 
-    // Weekly scan volume: last 7 days, one bucket per day.
-    const recentScans = await prisma.scanLog.findMany({
-      where: { scannedAt: { gte: last7Start } },
+     // --- Scan volume: four chart ranges bucketed from raw scan logs ---
+    // One 30-day fetch, then bucketed in JS. Buckets carry an ISO start
+    // timestamp; the frontend formats labels in the browser's timezone.
+    const hour = 60 * 60 * 1000;
+    const monthStart = new Date(now.getTime() - 30 * day);
+
+    const allScans = await prisma.scanLog.findMany({
+      where: { scannedAt: { gte: monthStart } },
       select: { scannedAt: true, result: true },
     });
 
-    const weeklyScanVolume = [];
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date(now.getTime() - i * day);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart.getTime() + day);
+    // Split [startMs, startMs + size*count] into `count` buckets.
+    const buildBuckets = (startMs, sizeMs, count) => {
+      const buckets = [];
+      for (let i = 0; i < count; i++) {
+        const bStart = startMs + i * sizeMs;
+        const bEnd = bStart + sizeMs;
+        const inBucket = allScans.filter((s) => {
+          const t = s.scannedAt.getTime();
+          return t >= bStart && t < bEnd;
+        });
+        buckets.push({
+          start: new Date(bStart).toISOString(),
+          scans: inBucket.length,
+          flagged: inBucket.filter((s) => s.result !== 'valid').length,
+        });
+      }
+      return buckets;
+    };
 
-      const inDay = recentScans.filter(
-        (s) => s.scannedAt >= dayStart && s.scannedAt < dayEnd
-      );
-
-      weeklyScanVolume.push({
-        date: dayStart.toISOString().slice(0, 10),
-        total: inDay.length,
-        flagged: inDay.filter((s) => s.result !== 'valid').length,
-      });
-    }
+    const scanVolume = {
+      '1h':  buildBuckets(now.getTime() - hour,      5 * 60 * 1000, 12), // 12 × 5min
+      '24h': buildBuckets(now.getTime() - 24 * hour, 2 * hour,      12), // 12 × 2h
+      '1w':  buildBuckets(now.getTime() - 7 * day,   day,            7), // 7 × 1day
+      '1M':  buildBuckets(now.getTime() - 30 * day,  3 * day,       10), // 10 × 3day
+    };
 
     res.json({
       statCards: {
@@ -408,7 +422,7 @@ router.get('/metrics', async (req, res) => {
         totalScans: { value: totalScans, delta: delta(scansLast7, scansPrev7) },
         totalAlerts: { value: totalAlerts, delta: delta(alertsLast7, alertsPrev7) },
       },
-      weeklyScanVolume,
+      scanVolume,
       statusDonut: {
         active: activeQr,
         suspicious: suspiciousQr,

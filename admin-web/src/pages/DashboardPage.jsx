@@ -4,7 +4,7 @@ import RecentActivity from '../components/dashboard/RecentActivity.jsx'
 import ScanVolumeChart from '../components/dashboard/ScanVolumeChart.jsx'
 import StatusDonutChart from '../components/dashboard/StatusDonutChart.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
-import { getMetrics } from '../services/api.js'
+import { getMetrics, getRecentActivity } from '../services/api.js'
 
 const SKELETON_ITEMS = ['total', 'active', 'blacklisted', 'suspicious', 'alerts', 'scans']
 
@@ -35,22 +35,21 @@ function DashboardSkeleton() {
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState(null)
+  const [activities, setActivities] = useState([])
 
   useEffect(() => {
     let isMounted = true
-
-    async function loadDashboardMetrics() {
-      const dashboardMetrics = await getMetrics()
-
-      if (!isMounted) {
-        return
-      }
-
+    async function loadDashboard() {
+      // Fire both requests at once instead of one after the other.
+      const [dashboardMetrics, recent] = await Promise.all([
+        getMetrics(),
+        getRecentActivity(),
+      ])
+      if (!isMounted) return
       setMetrics(dashboardMetrics)
+      setActivities(recent.activities)
     }
-
-    loadDashboardMetrics()
-
+    loadDashboard()
     return () => {
       isMounted = false
     }
@@ -80,7 +79,7 @@ export default function DashboardPage() {
               <StatusDonutChart items={metrics.statusDistribution} />
             </section>
 
-            <RecentActivity activities={metrics.recentActivity} />
+            <RecentActivity activities={activities} />
           </>
         )}
       </main>

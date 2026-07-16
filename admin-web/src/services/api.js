@@ -542,6 +542,158 @@ const INITIAL_ADMIN_SETTINGS = {
   },
 }
 
+// ============================================================
+// Real backend plumbing — replaces the localStorage simulator
+// step by step. Session shape becomes { token, admin }.
+// ============================================================
+
+// Read the JWT saved at login. Returns null when logged out.
+function getAuthToken() {
+  const session = readSession()
+  return session?.token ?? null
+}
+
+// One shared request function — every real API call goes through here.
+// - Prefixes '/api' (works in dev via Vite proxy, in prod via same-origin)
+// - Attaches Authorization: Bearer <token> automatically
+// - On 401: clears the dead session and sends the user back to login
+// - On error: throws with the backend's { error } message
+async function request(path, { method = 'GET', body, headers } = {}) {
+  const token = getAuthToken()
+
+  const response = await fetch(`/api${path}`, {
+    method,
+    headers: {
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json().catch(() => null)
+
+  // A 401 only means "session expired" if we actually sent a token.
+  // Logged-out calls (login / register / forgot / reset) that return 401
+  // are normal auth failures — let the backend's message surface instead
+  // of hijacking them into a redirect.
+  if (response.status === 401 && token) {
+    removeStorage(SESSION_KEY)
+    window.location.assign('/login')
+    throw new Error('Session expired. Please sign in again.')
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || `Request failed (${response.status})`)
+  }
+
+  return data
+}
+
+// --- getMetrics adapter: backend numbers → UI shapes ---------------
+// The backend sends neutral facts (counts, ISO-timestamped buckets).
+// Everything presentational (labels, titles, ticks, colors) is built
+// here so timezone formatting happens in the user's browser.
+
+// Static card metadata — order and styling stay frontend-owned.
+const METRIC_CARD_META = [
+  { id: 'totalQrCodes',    backendKey: 'totalQrCodes',       label: 'Total QR Codes',  icon: 'qr',      tone: 'blue' },
+  { id: 'activeQrCodes',   backendKey: 'activeQrCodes',      label: 'Active QR Codes', icon: 'check',   tone: 'green' },
+  { id: 'blacklisted',     backendKey: 'blacklistedQrCodes', label: 'Blacklisted',     icon: 'warning', tone: 'red' },
+  { id: 'suspicious',      backendKey: 'suspiciousQrCodes',  label: 'Suspicious',      icon: 'shield',  tone: 'amber' },
+  { id: 'alertReports',    backendKey: 'totalAlerts',        label: 'Alert Reports',   icon: 'bell',    tone: 'rose' },
+  { id: 'totalScans',      backendKey: 'totalScans',         label: 'Total Scans',     icon: 'eye',     tone: 'sky' },
+]
+
+const STATUS_DONUT_META = [
+  { key: 'active',      label: 'Active',      color: '#059669' },
+  { key: 'suspicious',  label: 'Suspicious',  color: '#f59e0b' },
+  { key: 'blacklisted', label: 'Blacklisted', color: '#dc2626' },
+  { key: 'expired',     label: 'Expired',     color: '#6b7280' },
+]
+
+// Round a data max up to a "nice" chart ceiling, then emit 5 ticks.
+function buildTicks(dataMax) {
+  const max = Math.max(dataMax, 4) // avoid a 0-height chart
+  const magnitude = 10 ** Math.floor(Math.log10(max))
+  const nice = Math.ceil(max / magnitude) * magnitude
+  return {
+    maxValue: nice,
+    ticks: [nice, nice * 0.75, nice * 0.5, nice * 0.25, 0].map(Math.round),
+  }
+}
+
+// Format a bucket's ISO start into a chart label, per range.
+function bucketLabel(iso, range) {
+  const d = new Date(iso) // rendered in the browser's local timezone
+  if (range === '1h' || range === '24h') {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  }
+  if (range === '1w') {
+    return d.toLocaleDateString([], { weekday: 'short' })
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) // 1M
+}
+
+const RANGE_TITLES = {
+  '1h':  { title: 'Scan Volume - Last Hour',     subtitle: 'Last hour (5-minute buckets)' },
+  '24h': { title: 'Scan Volume - Last 24 Hours', subtitle: 'Last 24 hours (2-hour buckets)' },
+  '1w':  { title: 'Scan Volume - Last 7 Days',   subtitle: 'Last 7 days' },
+  '1M':  { title: 'Scan Volume - Last 30 Days',  subtitle: 'Last 30 days (3-day buckets)' },
+}
+
+function adaptScanVolume(backendVolume) {
+  const out = {}
+  for (const range of Object.keys(RANGE_TITLES)) {
+    const buckets = backendVolume[range] ?? []
+    const data = buckets.map((b, i) => {
+      const label = bucketLabel(b.start, range)
+      return {
+        label,
+        // 1h: label every 3rd bucket to avoid crowding; others: all.
+        ...(range !== '1h' || i % 3 === 0 ? { displayLabel: label } : {}),
+        scans: b.scans,
+      }
+    })
+    const { maxValue, ticks } = buildTicks(Math.max(0, ...data.map((d) => d.scans)))
+    out[range] = { ...RANGE_TITLES[range], maxValue, ticks, data }
+  }
+  return out
+}
+
+// "2m ago" style relative time, computed in the browser.
+function timeAgo(iso) {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+// ActivityLog event type → card tone. Unknown types fall back to info.
+const ACTIVITY_TONES = {
+  status_changed: 'warning',
+  alert_created: 'danger',
+  alert_resolved: 'info',
+  alert_reopened: 'danger',
+}
+
+// GET /api/admin/activity — Recent Activity feed (first page).
+export async function getRecentActivity({ page = 1, limit = 8 } = {}) {
+  const res = await request(`/admin/activity?page=${page}&limit=${limit}`)
+  return {
+    activities: res.data.map((a) => ({
+      id: a.id,
+      message: a.message,
+      time: timeAgo(a.createdAt),
+      tone: ACTIVITY_TONES[a.type] ?? 'info',
+    })),
+    pagination: res.pagination,
+  }
+}
+
 function wait() {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, MOCK_DELAY_MS)
@@ -992,64 +1144,30 @@ function getNextQRCodeId(qrCodes) {
   return `QR-${String(nextNumber).padStart(3, '0')}`
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// POST /api/auth/login
-// Payload: { email, password }
-// Expected response: { admin }
-// Purpose: authenticate an admin user and return the current admin profile.
+// POST /api/auth/login — real backend call.
+// Backend returns { token, user }; we store both, return { admin } as before.
 export async function loginAdmin({ email, password }) {
-  await wait()
-
-  const normalizedEmail = normalizeEmail(email)
-  const storedAdmins = getStoredAdmins()
-  const registeredAdmin = storedAdmins.find(
-    (admin) => admin.email === normalizedEmail && admin.password === password,
-  )
-
-  if (normalizedEmail === DEMO_ADMIN.email && password === DEMO_PASSWORD) {
-    saveSession(DEMO_ADMIN)
-    return { admin: DEMO_ADMIN }
-  }
-
-  if (registeredAdmin) {
-    const admin = toPublicAdmin(registeredAdmin)
-    saveSession(admin)
-    return { admin }
-  }
-
-  throw new Error('Invalid email or password.')
+  const data = await request('/auth/login', {
+    method: 'POST',
+    body: { email: normalizeEmail(email), password },
+  })
+  saveSession({ token: data.token, admin: data.user })
+  return { admin: data.user }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// POST /api/auth/register
-// Payload: { fullName, email, phone, role, password }
-// Expected response: { admin }
-// Purpose: create a staff account request/profile for admin web access.
-export async function registerAdmin({ fullName, email, phone, role, password }) {
-  await wait()
-
-  const normalizedEmail = normalizeEmail(email)
-  const storedAdmins = getStoredAdmins()
-  const emailExists =
-    normalizedEmail === DEMO_ADMIN.email ||
-    storedAdmins.some((admin) => admin.email === normalizedEmail)
-
-  if (emailExists) {
-    throw new Error('This email is already registered.')
-  }
-
-  const admin = {
-    id: `mock-admin-${Date.now()}`,
-    fullName: fullName.trim(),
-    email: normalizedEmail,
-    phone: phone.trim(),
-    role,
-    password,
-  }
-
-  saveStoredAdmins([...storedAdmins, admin])
-
-  return { admin: toPublicAdmin(admin) }
+// POST /api/auth/register — backend has NO role field; every new
+// account is role 'user'. The UI's role input is intentionally dropped.
+export async function registerAdmin({ fullName, email, phone, password }) {
+  const user = await request('/auth/register', {
+    method: 'POST',
+    body: {
+      fullName: fullName.trim(),
+      email: normalizeEmail(email),
+      phoneNumber: phone?.trim() || undefined,
+      password,
+    },
+  })
+  return { admin: user }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1057,8 +1175,8 @@ export async function registerAdmin({ fullName, email, phone, role, password }) 
 // Payload: none
 // Expected response: { success }
 // Purpose: clear the current admin session.
+// JWT is stateless — logging out is purely client-side.
 export async function logoutAdmin() {
-  await wait()
   removeStorage(SESSION_KEY)
   return { success: true }
 }
@@ -1068,9 +1186,10 @@ export async function logoutAdmin() {
 // Payload: none
 // Expected response: admin profile or null
 // Purpose: return the current authenticated admin profile.
+// Session restore: read the user saved at login. No server round-trip.
 export async function getCurrentAdmin() {
-  await wait()
-  return readSession()
+  const session = readSession()
+  return session?.admin ?? null
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1079,8 +1198,20 @@ export async function getCurrentAdmin() {
 // Expected response: dashboard metric cards, scan volume, status distribution, and recent activity.
 // Purpose: return dashboard metric cards, scan volume chart data, QR status distribution, and recent activity.
 export async function getMetrics() {
-  await wait()
-  return DASHBOARD_METRICS
+  const m = await request('/admin/metrics')
+  return {
+    metricCards: METRIC_CARD_META.map(({ backendKey, ...meta }) => ({
+      ...meta,
+      value: (m.statCards[backendKey]?.value ?? 0).toLocaleString(),
+    })),
+    scanVolume: adaptScanVolume(m.scanVolume),
+    statusDistribution: STATUS_DONUT_META.map(({ key, label, color }) => ({
+      label,
+      color,
+      value: m.statusDonut[key] ?? 0,
+    })),
+    recentActivity: [],
+  }
 }
 
 // Provisional endpoint — to be confirmed with backend team.

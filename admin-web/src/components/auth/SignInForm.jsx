@@ -79,7 +79,7 @@ export default function SignInForm({
       </button>
 
       <div className="demo-credentials" aria-label="Demo credentials">
-        Demo: <strong>admin@vafpqr.gov</strong> / <strong>admin123</strong>
+        Demo: <strong>admin@secureqr.com</strong> / <strong>Admin2026secure</strong>
       </div>
 
       <p className="auth-switch">

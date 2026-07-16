@@ -1,6 +1,6 @@
 // seed-demo.js — Populates realistic demo data so the dashboard charts,
 // deltas, and donut have something to show.
-// Spreads scans across the last 14 days so period-over-period deltas work.
+// Spreads scans across the last 30 days so period-over-period deltas work.
 // Safe to re-run: it appends more demo rows (it does not wipe existing data).
 
 require('dotenv/config');
@@ -88,6 +88,20 @@ async function main() {
   const scanRows = [];
 
   for (const qr of createdQrs) {
+    // Older window (days 14-30 ago): sparse scans so the 30-day chart
+    // has data on its left half.
+    const olderScans = randInt(4, 10);
+    for (let i = 0; i < olderScans; i++) {
+      const scannedAt = new Date(Date.now() - (14 * DAY + Math.random() * 16 * DAY));
+      scanRows.push({
+        qrCodeId: qr.id,
+        scannedAt,
+        ipAddress: `203.0.113.${randInt(1, 254)}`,
+        userAgent: pick(SAMPLE_UAS),
+        result: Math.random() < 0.9 ? 'valid' : pick(['expired', 'invalid']),
+      });
+    }
+
     // Previous week (days 7-14 ago): fewer scans.
     const prevWeekScans = randInt(5, 15);
     for (let i = 0; i < prevWeekScans; i++) {
@@ -127,7 +141,7 @@ async function main() {
   for (let i = 0; i < 12; i++) {
     scanRows.push({
       qrCodeId: null,
-      scannedAt: randomDateWithin(14),
+      scannedAt: randomDateWithin(30),
       ipAddress: `198.51.100.${randInt(1, 254)}`,
       userAgent: pick(SAMPLE_UAS),
       result: 'invalid',
