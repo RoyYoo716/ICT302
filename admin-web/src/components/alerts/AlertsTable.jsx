@@ -40,8 +40,8 @@ export default function AlertsTable({
           <thead>
             <tr>
               <th>Alert ID</th>
-              <th>QR Code</th>
-              <th>User</th>
+              <th>QR Label</th>
+              <th>Reporter</th>
               <th>GPS Location</th>
               <th>Description</th>
               <th>Status</th>
@@ -53,9 +53,9 @@ export default function AlertsTable({
             {alerts.length > 0 ? (
               alerts.map((alert) => (
                 <tr key={alert.id}>
-                  <td className="alerts-id-cell">{alert.id}</td>
+                  <td className="alerts-id-cell">{alert.id.slice(0, 8)}</td>
                   <td>
-                    <span className="alerts-qr-code">{alert.qrCodeId}</span>
+                    <span className="alerts-qr-code">{alert.qrLabel || alert.qrCodeId}</span>
                   </td>
                   <td>{alert.userName}</td>
                   <td className="alerts-location-cell">{alert.gpsLocation}</td>

@@ -54,29 +54,19 @@ export default function AlertDetailModal({
   onOpenQRCode,
   onStatusUpdate,
 }) {
-  const [adminNotes, setAdminNotes] = useState(alert.adminNotes || '')
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setAdminNotes(alert.adminNotes || '')
     setError('')
   }, [alert])
 
-  async function handleMarkReviewed() {
-    setError('')
-    await onStatusUpdate('Reviewed', adminNotes)
-  }
-
   async function handleResolveAlert() {
-    const trimmedNotes = adminNotes.trim()
-
-    if (!trimmedNotes) {
-      setError('Admin Notes are required to resolve an alert.')
-      return
-    }
-
     setError('')
-    await onStatusUpdate('Resolved', trimmedNotes)
+    try {
+      await onStatusUpdate('Resolved', '')
+    } catch (err) {
+      setError(err.message || 'Failed to resolve the alert.')
+    }
   }
 
   return (
@@ -161,26 +151,9 @@ export default function AlertDetailModal({
           <p>{alert.description}</p>
         </section>
 
-        <label className="alert-notes-field">
-          <span>Admin Notes</span>
-          <textarea
-            onChange={(event) => setAdminNotes(event.target.value)}
-            placeholder="Add verification notes or findings..."
-            value={adminNotes}
-          />
-        </label>
-
         {error ? <p className="alert-modal-error">{error}</p> : null}
 
         <footer className="alert-modal-footer">
-          <button
-            className="alert-modal-primary"
-            disabled={isSaving}
-            onClick={handleMarkReviewed}
-            type="button"
-          >
-            Mark Reviewed
-          </button>
           <button
             className="alert-modal-resolve"
             disabled={isSaving}

@@ -236,7 +236,7 @@
 
 .qr-table th:nth-child(1),
 .qr-table td:nth-child(1) {
-  width: 105px;
+  width: 220px;
 }
 
 .qr-table th:nth-child(2),
@@ -293,6 +293,8 @@
   font-family: var(--font-sans);
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;        
+  text-overflow: ellipsis; 
 }
 
 .qr-url-cell {

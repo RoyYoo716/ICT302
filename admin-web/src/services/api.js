@@ -597,19 +597,19 @@ async function request(path, { method = 'GET', body, headers } = {}) {
 
 // Static card metadata — order and styling stay frontend-owned.
 const METRIC_CARD_META = [
-  { id: 'totalQrCodes',    backendKey: 'totalQrCodes',       label: 'Total QR Codes',  icon: 'qr',      tone: 'blue' },
-  { id: 'activeQrCodes',   backendKey: 'activeQrCodes',      label: 'Active QR Codes', icon: 'check',   tone: 'green' },
-  { id: 'blacklisted',     backendKey: 'blacklistedQrCodes', label: 'Blacklisted',     icon: 'warning', tone: 'red' },
-  { id: 'suspicious',      backendKey: 'suspiciousQrCodes',  label: 'Suspicious',      icon: 'shield',  tone: 'amber' },
-  { id: 'alertReports',    backendKey: 'totalAlerts',        label: 'Alert Reports',   icon: 'bell',    tone: 'rose' },
-  { id: 'totalScans',      backendKey: 'totalScans',         label: 'Total Scans',     icon: 'eye',     tone: 'sky' },
+  { id: 'totalQrCodes', backendKey: 'totalQrCodes', label: 'Total QR Codes', icon: 'qr', tone: 'blue' },
+  { id: 'activeQrCodes', backendKey: 'activeQrCodes', label: 'Active QR Codes', icon: 'check', tone: 'green' },
+  { id: 'blacklisted', backendKey: 'blacklistedQrCodes', label: 'Blacklisted', icon: 'warning', tone: 'red' },
+  { id: 'suspicious', backendKey: 'suspiciousQrCodes', label: 'Suspicious', icon: 'shield', tone: 'amber' },
+  { id: 'alertReports', backendKey: 'totalAlerts', label: 'Alert Reports', icon: 'bell', tone: 'rose' },
+  { id: 'totalScans', backendKey: 'totalScans', label: 'Total Scans', icon: 'eye', tone: 'sky' },
 ]
 
 const STATUS_DONUT_META = [
-  { key: 'active',      label: 'Active',      color: '#059669' },
-  { key: 'suspicious',  label: 'Suspicious',  color: '#f59e0b' },
+  { key: 'active', label: 'Active', color: '#059669' },
+  { key: 'suspicious', label: 'Suspicious', color: '#f59e0b' },
   { key: 'blacklisted', label: 'Blacklisted', color: '#dc2626' },
-  { key: 'expired',     label: 'Expired',     color: '#6b7280' },
+  { key: 'expired', label: 'Expired', color: '#6b7280' },
 ]
 
 // Round a data max up to a "nice" chart ceiling, then emit 5 ticks.
@@ -636,10 +636,10 @@ function bucketLabel(iso, range) {
 }
 
 const RANGE_TITLES = {
-  '1h':  { title: 'Scan Volume - Last Hour',     subtitle: 'Last hour (5-minute buckets)' },
+  '1h': { title: 'Scan Volume - Last Hour', subtitle: 'Last hour (5-minute buckets)' },
   '24h': { title: 'Scan Volume - Last 24 Hours', subtitle: 'Last 24 hours (2-hour buckets)' },
-  '1w':  { title: 'Scan Volume - Last 7 Days',   subtitle: 'Last 7 days' },
-  '1M':  { title: 'Scan Volume - Last 30 Days',  subtitle: 'Last 30 days (3-day buckets)' },
+  '1w': { title: 'Scan Volume - Last 7 Days', subtitle: 'Last 7 days' },
+  '1M': { title: 'Scan Volume - Last 30 Days', subtitle: 'Last 30 days (3-day buckets)' },
 }
 
 function adaptScanVolume(backendVolume) {
@@ -691,6 +691,55 @@ export async function getRecentActivity({ page = 1, limit = 8 } = {}) {
       tone: ACTIVITY_TONES[a.type] ?? 'info',
     })),
     pagination: res.pagination,
+  }
+}
+
+// --- QR Codes adapters ------------------------------------------
+
+// Backend statuses are lowercase ('active'); the UI renders 'Active'.
+const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+
+// Backend QR row → the shape QRCodeTable renders.
+function adaptQRCode(qr) {
+  const expires = qr.expiresAt ? new Date(qr.expiresAt) : null
+  return {
+    id: qr.id,
+    label: qr.label,
+    destinationUrl: qr.destinationUrl,
+    status: capitalize(qr.status),
+    expiryDate: expires ? expires.toISOString().slice(0, 10) : '',
+    expiresAt: expires ? expires.toLocaleString() : '',
+    scans: qr.scanCount ?? 0,
+    alerts: qr.alertCount ?? 0,
+    createdAt: qr.createdAt,
+  }
+}
+
+// --- Alerts adapters --------------------------------------------
+
+// gpsLat/gpsLng numbers → the "1.3521°N, 103.8198°E" display string.
+function formatGps(lat, lng) {
+  if (lat == null || lng == null) return ''
+  const ns = lat >= 0 ? 'N' : 'S'
+  const ew = lng >= 0 ? 'E' : 'W'
+  return `${Math.abs(lat).toFixed(4)}°${ns}, ${Math.abs(lng).toFixed(4)}°${ew}`
+}
+
+// Backend Alert row → the shape the alerts table and modal render.
+function adaptAlert(a) {
+  return {
+    id: a.id,
+    qrCodeId: a.qrCodeId,
+    qrLabel: a.QrCode?.label ?? '',
+    userName: a.reporterName || 'Anonymous',
+    contact: a.contactInfo || '',
+    gpsLocation: formatGps(a.gpsLat, a.gpsLng),
+    description: a.description,
+    status: capitalize(a.status),
+    submittedAt: a.createdAt ? new Date(a.createdAt).toLocaleString() : '',
+    adminNotes: '', // not a backend feature — kept so the modal doesn't break
+    evidencePhotoUrl: a.photoUrl || '',
+    evidencePhotoFileName: a.photoUrl ? a.photoUrl.split('/').pop() : '',
   }
 }
 
@@ -1219,9 +1268,17 @@ export async function getMetrics() {
 // Payload: none
 // Expected response: { qrCodes }
 // Purpose: return QR code list for Admin Web.
-export async function getQRCodes() {
-  await wait()
-  return { qrCodes: cloneQRCodes(loadQRCodes()) }
+export async function getQRCodes({ search = '', status = 'All', page = 1, limit = 7 } = {}) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (search.trim()) params.set('search', search.trim())
+  if (status && status !== 'All') params.set('status', status.toLowerCase())
+
+  const res = await request(`/admin/qrcodes?${params}`)
+  return {
+    qrCodes: res.data.map(adaptQRCode),
+    pagination: res.pagination,
+    summary: res.summary,
+  }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1230,51 +1287,37 @@ export async function getQRCodes() {
 // Expected response: { qrCode }
 // Purpose: return one QR code detail.
 export async function getQRCodeById(id) {
-  await wait()
-
-  const qrCode = loadQRCodes().find((item) => item.id === id)
-
-  if (!qrCode) {
-    throw new Error('QR code not found.')
+  const qr = await request(`/admin/qrcodes/${id}`)
+  return {
+    qrCode: {
+      ...adaptQRCode({ ...qr, scanCount: qr.totalScans, alertCount: qr.alerts?.length ?? 0 }),
+      qrImageUrl: qr.qrImage,     // backend regenerates the PNG on the fly
+      scanHistory: qr.scanHistory, // available for later use (last 50 scans)
+    },
   }
-
-  return { qrCode: cloneQRCode(qrCode) }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
 // POST /api/qr/generate
-// Payload: { destinationUrl, expiryDuration }
+// Payload: { destinationUrl, expiryDuration, label }
 // Expected response: { qrCode }
 // Purpose: generate new secure QR code.
-export async function generateQRCode({ destinationUrl, expiryDuration }) {
-  await wait()
-
-  const trimmedDestinationUrl = destinationUrl.trim()
-
-  if (!trimmedDestinationUrl) {
-    throw new Error('Destination URL is required.')
-  }
-
-  const qrCodes = loadQRCodes()
-  const id = getNextQRCodeId(qrCodes)
-  const durationHours = Number(expiryDuration || 24)
-  const expiry = new Date(Date.now() + durationHours * 60 * 60 * 1000)
-  const expiresAt = formatDateTime(expiry)
-  const verifyUrl = buildVerifyUrl(id)
-  const qrCode = hydrateQRCode({
-    id,
-    destinationUrl: trimmedDestinationUrl,
-    status: 'Active',
-    expiryDate: expiresAt.slice(0, 10),
-    expiresAt,
-    scans: 0,
-    alerts: 0,
-    verifyUrl,
+export async function generateQRCode({ destinationUrl, expiryDuration, label }) {
+  const qr = await request('/qr/generate', {
+    method: 'POST',
+    body: {
+      destinationUrl: destinationUrl.trim(),
+      label: label?.trim() || undefined,
+      expiryHours: Number(expiryDuration || 24),
+    },
   })
-
-  saveQRCodes([qrCode, ...qrCodes])
-
-  return { qrCode: cloneQRCode(qrCode) }
+  return {
+    qrCode: {
+      ...adaptQRCode({ ...qr, scanCount: 0, alertCount: 0 }),
+      verifyUrl: qr.verifyUrl,
+      qrImageUrl: qr.qrImage, // backend: qrImage → UI: qrImageUrl
+    },
+  }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1283,21 +1326,11 @@ export async function generateQRCode({ destinationUrl, expiryDuration }) {
 // Expected response: { qrCode }
 // Purpose: activate or blacklist QR code.
 export async function updateQRCodeStatus(id, status) {
-  await wait()
-
-  const qrCodes = loadQRCodes()
-  const nextQRCodes = qrCodes.map((qrCode) =>
-    qrCode.id === id ? { ...qrCode, status } : qrCode,
-  )
-  const updatedQRCode = nextQRCodes.find((qrCode) => qrCode.id === id)
-
-  if (!updatedQRCode) {
-    throw new Error('QR code not found.')
-  }
-
-  saveQRCodes(nextQRCodes)
-
-  return { qrCode: cloneQRCode(updatedQRCode) }
+  const qr = await request(`/admin/qrcodes/${id}`, {
+    method: 'PATCH',
+    body: { status: status.toLowerCase() },
+  })
+  return { qrCode: adaptQRCode(qr) }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1306,39 +1339,27 @@ export async function updateQRCodeStatus(id, status) {
 // Expected response: text/csv containing all QR code records.
 // Purpose: export all QR Code records as a CSV file; backend should return all records, not one page.
 export async function exportQRCodesCsv() {
-  await wait()
-
-  const qrCodes = loadQRCodes()
-  const headers = ['QR ID', 'Destination URL', 'Status', 'Expiry Date', 'Scans', 'Alerts']
-  const rows = qrCodes.map((qrCode) => [
-    qrCode.id,
-    qrCode.destinationUrl,
-    qrCode.status,
-    qrCode.expiryDate,
-    qrCode.scans,
-    qrCode.alerts,
-  ])
-  const csv = buildCsv(headers, rows)
-
+  const token = getAuthToken()
+  const response = await fetch('/api/admin/qrcodes/export', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!response.ok) {
+    throw new Error(`CSV export failed (${response.status})`)
+  }
   return {
-    blob: createCsvBlob(csv),
-    fileName: `vafpqr-qr-codes-${formatDate(new Date())}.csv`,
+    blob: await response.blob(),
+    fileName: `qr-codes-${new Date().toISOString().slice(0, 10)}.csv`,
   }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// GET /api/alerts
-// Payload: none
-// Expected response: { alerts, newAlertCount }
-// Purpose: return tamper alert list for Admin Web.
-export async function getAlerts() {
-  await wait()
-
-  const alerts = loadAlerts()
-
+// GET /api/admin/alerts — server-side pagination + status filter.
+export async function getAlerts({ status = 'All', page = 1, limit = 7 } = {}) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (status && status !== 'All') params.set('status', status.toLowerCase())
+  const res = await request(`/admin/alerts?${params}`)
   return {
-    alerts: cloneAlerts(alerts),
-    newAlertCount: getNewAlertCount(alerts),
+    alerts: res.data.map(adaptAlert),
+    pagination: res.pagination,
   }
 }
 
@@ -1359,36 +1380,14 @@ export async function getAlertById(id) {
   return { alert: cloneAlert(alert) }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// PATCH /api/alerts/:id/status
-// Payload: { status, adminNotes }
-// Expected response: { alert, newAlertCount }
-// Purpose: mark alert as Reviewed or Resolved and save admin notes.
+// PATCH /api/admin/alerts/:id — resolve or reopen.
 export async function updateAlertStatus(id, payload) {
-  await wait()
-
-  const alerts = loadAlerts()
-  const nextAlerts = alerts.map((alert) =>
-    alert.id === id
-      ? {
-          ...alert,
-          status: payload.status,
-          adminNotes: payload.adminNotes,
-        }
-      : alert,
-  )
-  const updatedAlert = nextAlerts.find((alert) => alert.id === id)
-
-  if (!updatedAlert) {
-    throw new Error('Alert not found.')
-  }
-
-  saveAlerts(nextAlerts)
-
-  return {
-    alert: cloneAlert(updatedAlert),
-    newAlertCount: getNewAlertCount(nextAlerts),
-  }
+  const status = (typeof payload === 'string' ? payload : payload?.status || '')
+  const alert = await request(`/admin/alerts/${id}`, {
+    method: 'PATCH',
+    body: { status: status.toLowerCase() },
+  })
+  return { alert: adaptAlert(alert) }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1461,13 +1460,13 @@ export async function updateUser(id, payload) {
   const nextUsers = users.map((user) =>
     user.id === id
       ? {
-          ...user,
-          fullName: payload.fullName.trim(),
-          email: normalizeEmail(payload.email),
-          role: payload.role,
-          status: payload.status,
-          twoFactorEnabled: Boolean(payload.twoFactorEnabled),
-        }
+        ...user,
+        fullName: payload.fullName.trim(),
+        email: normalizeEmail(payload.email),
+        role: payload.role,
+        status: payload.status,
+        twoFactorEnabled: Boolean(payload.twoFactorEnabled),
+      }
       : user,
   )
   const updatedUser = nextUsers.find((user) => user.id === id)

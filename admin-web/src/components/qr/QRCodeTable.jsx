@@ -37,7 +37,7 @@ export default function QRCodeTable({
         <table className="qr-table">
           <thead>
             <tr>
-              <th>QR ID</th>
+              <th>Label</th>
               <th>Destination URL</th>
               <th>Status</th>
               <th>Expiry Date</th>
@@ -51,7 +51,7 @@ export default function QRCodeTable({
             {qrCodes.length > 0 ? (
               qrCodes.map((qrCode) => (
                 <tr key={qrCode.id}>
-                  <td className="qr-id-cell">{qrCode.id}</td>
+                  <td className="qr-id-cell">{qrCode.label || qrCode.id}</td>
                   <td className="qr-url-cell">{qrCode.destinationUrl}</td>
                   <td>
                     <QRStatusBadge status={qrCode.status} />

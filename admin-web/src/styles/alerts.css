@@ -123,13 +123,14 @@
 
 .alerts-table th:nth-child(1),
 .alerts-table td:nth-child(1) {
-  width: 118px;
+  width: 100px;
   padding-left: 18px;
 }
 
 .alerts-table th:nth-child(2),
 .alerts-table td:nth-child(2) {
-  width: 120px;
+  width: 190px;
+  padding-left: 18px;
 }
 
 .alerts-table th:nth-child(3),
@@ -168,11 +169,11 @@
   font-family: 'Courier New', monospace;
   font-size: var(--font-size-caption);
   font-weight: 700;
+  white-space: nowrap
 }
 
 .alerts-qr-code {
-  color: var(--color-primary);
-  font-family: 'Courier New', monospace;
+  color: var(--color-text);
   font-size: var(--font-size-caption);
   font-weight: 700;
 }

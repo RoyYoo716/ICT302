@@ -3,10 +3,10 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import AlertDetailModal from '../components/alerts/AlertDetailModal.jsx'
 import AlertsTable from '../components/alerts/AlertsTable.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
-import { getAlertById, getAlerts, updateAlertStatus } from '../services/api.js'
+import { getAlerts, updateAlertStatus } from '../services/api.js'
 
 const PAGE_SIZE = 7
-const STATUS_OPTIONS = ['All', 'New', 'Reviewed', 'Resolved']
+const STATUS_OPTIONS = ['All', 'New', 'Resolved']
 
 function normalizePage(value) {
   const page = Number(value)
@@ -18,6 +18,7 @@ export default function AlertsPage() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [alerts, setAlerts] = useState([])
+  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
   const [isLoading, setIsLoading] = useState(true)
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [isSavingAlert, setIsSavingAlert] = useState(false)
@@ -27,24 +28,23 @@ export default function AlertsPage() {
 
   useEffect(() => {
     let isMounted = true
-
     async function loadAlerts() {
-      const response = await getAlerts()
-
-      if (!isMounted) {
-        return
-      }
-
+      setIsLoading(true)
+      const response = await getAlerts({
+        status: selectedStatus,
+        page: currentPage,
+        limit: PAGE_SIZE,
+      })
+      if (!isMounted) return
       setAlerts(response.alerts)
+      setPagination(response.pagination)
       setIsLoading(false)
     }
-
     loadAlerts()
-
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [selectedStatus, currentPage])
 
   const currentNewAlerts = useMemo(
     () => alerts.filter((alert) => alert.status === 'New'),
@@ -60,12 +60,11 @@ export default function AlertsPage() {
     return alerts.filter((alert) => alert.status === selectedStatus)
   }, [alerts, selectedStatus])
 
-  const totalPages = Math.max(Math.ceil(filteredAlerts.length / PAGE_SIZE), 1)
+  const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
-  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE
-  const pagedAlerts = filteredAlerts.slice(startIndex, startIndex + PAGE_SIZE)
-  const startItem = filteredAlerts.length === 0 ? 0 : startIndex + 1
-  const endItem = Math.min(startIndex + PAGE_SIZE, filteredAlerts.length)
+  const pagedAlerts = alerts // the server already returns just this page
+  const startItem = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
+  const endItem = Math.min(pagination.page * pagination.limit, pagination.total)
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -105,9 +104,9 @@ export default function AlertsPage() {
     updateQuery({ status: event.target.value, page: '1' })
   }
 
-  async function handleViewDetails(id) {
-    const response = await getAlertById(id)
-    setSelectedAlert(response.alert)
+  function handleViewDetails(id) {
+    const found = alerts.find((alert) => alert.id === id)
+    if (found) setSelectedAlert(found)
   }
 
   function handleCloseModal() {
@@ -173,7 +172,7 @@ export default function AlertsPage() {
             onPageChange={(page) => updateQuery({ page: String(page) })}
             onViewDetails={handleViewDetails}
             startItem={startItem}
-            totalCount={filteredAlerts.length}
+            totalCount={pagination.total}
             totalPages={totalPages}
           />
         )}

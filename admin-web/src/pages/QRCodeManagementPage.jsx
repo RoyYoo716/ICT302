@@ -24,6 +24,7 @@ export default function QRCodeManagementPage() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [qrCodes, setQRCodes] = useState([])
+   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerateOpen, setIsGenerateOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -37,46 +38,31 @@ export default function QRCodeManagementPage() {
 
   useEffect(() => {
     let isMounted = true
-
     async function loadQRCodes() {
-      const response = await getQRCodes()
-
-      if (!isMounted) {
-        return
-      }
-
+      setIsLoading(true)
+      // Server-side: the backend filters, searches, and pages for us.
+      const response = await getQRCodes({
+        search: searchTerm,
+        status: selectedStatus,
+        page: currentPage,
+        limit: PAGE_SIZE,
+      })
+      if (!isMounted) return
       setQRCodes(response.qrCodes)
+      setPagination(response.pagination)
       setIsLoading(false)
     }
-
     loadQRCodes()
-
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [searchTerm, selectedStatus, currentPage])
 
-  const filteredQRCodes = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
-
-    return qrCodes.filter((qrCode) => {
-      const matchesStatus =
-        selectedStatus === 'All' || qrCode.status === selectedStatus
-      const matchesSearch =
-        !normalizedSearch ||
-        qrCode.id.toLowerCase().includes(normalizedSearch) ||
-        qrCode.destinationUrl.toLowerCase().includes(normalizedSearch)
-
-      return matchesStatus && matchesSearch
-    })
-  }, [qrCodes, searchTerm, selectedStatus])
-
-  const totalPages = Math.max(Math.ceil(filteredQRCodes.length / PAGE_SIZE), 1)
+  const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
-  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE
-  const pagedQRCodes = filteredQRCodes.slice(startIndex, startIndex + PAGE_SIZE)
-  const startItem = filteredQRCodes.length === 0 ? 0 : startIndex + 1
-  const endItem = Math.min(startIndex + PAGE_SIZE, filteredQRCodes.length)
+  const pagedQRCodes = qrCodes // the server already returns just this page
+  const startItem = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
+  const endItem = Math.min(pagination.page * pagination.limit, pagination.total)
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -230,7 +216,7 @@ export default function QRCodeManagementPage() {
             onViewDetails={handleViewDetails}
             qrCodes={pagedQRCodes}
             startItem={startItem}
-            totalCount={filteredQRCodes.length}
+            totalCount={pagination.total}
             totalPages={totalPages}
           />
         )}

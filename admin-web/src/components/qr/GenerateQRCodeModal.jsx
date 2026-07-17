@@ -8,6 +8,7 @@ const EXPIRY_OPTIONS = [
 ]
 
 export default function GenerateQRCodeModal({ isSubmitting, onClose, onGenerate }) {
+  const [label, setLabel] = useState('')
   const [destinationUrl, setDestinationUrl] = useState('')
   const [expiryDuration, setExpiryDuration] = useState('24')
   const [fieldErrors, setFieldErrors] = useState({})
@@ -48,7 +49,7 @@ export default function GenerateQRCodeModal({ isSubmitting, onClose, onGenerate 
     }
 
     setFieldErrors({})
-    await onGenerate({ destinationUrl: destinationUrl.trim(), expiryDuration })
+    await onGenerate({ destinationUrl: destinationUrl.trim(), expiryDuration, label })
   }
 
   return (
@@ -103,6 +104,16 @@ export default function GenerateQRCodeModal({ isSubmitting, onClose, onGenerate 
             {fieldErrors.expiryDuration ? (
               <small className="qr-form-error">{fieldErrors.expiryDuration}</small>
             ) : null}
+          </label>
+
+          <label className="qr-form-field">
+            <span>Label</span>
+            <input
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Bus Stop 4102"
+              type="text"
+              value={label}
+            />
           </label>
 
           <div className="qr-modal-actions">

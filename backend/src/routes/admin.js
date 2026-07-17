@@ -192,9 +192,12 @@ router.get('/alerts', async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Number(req.query.limit) || 20);
+    const { status } = req.query;
+    const where = status ? { status } : {};
 
     const [alerts, total] = await Promise.all([
       prisma.alert.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -202,7 +205,7 @@ router.get('/alerts', async (req, res) => {
           QrCode: { select: { id: true, label: true, destinationUrl: true, status: true } },
         },
       }),
-      prisma.alert.count(),
+      prisma.alert.count({ where }),
     ]);
 
     res.json({
@@ -261,11 +264,11 @@ router.get('/users', async (req, res) => {
 
     const where = search
       ? {
-          OR: [
-            { email: { contains: search, mode: 'insensitive' } },
-            { fullName: { contains: search, mode: 'insensitive' } },
-          ],
-        }
+        OR: [
+          { email: { contains: search, mode: 'insensitive' } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+        ],
+      }
       : {};
 
     const [users, total] = await Promise.all([
@@ -376,7 +379,7 @@ router.get('/metrics', async (req, res) => {
       prisma.qrCode.count({ where: { createdAt: { gte: prev7Start, lt: last7Start } } }),
     ]);
 
-     // --- Scan volume: four chart ranges bucketed from raw scan logs ---
+    // --- Scan volume: four chart ranges bucketed from raw scan logs ---
     // One 30-day fetch, then bucketed in JS. Buckets carry an ISO start
     // timestamp; the frontend formats labels in the browser's timezone.
     const hour = 60 * 60 * 1000;
@@ -407,10 +410,10 @@ router.get('/metrics', async (req, res) => {
     };
 
     const scanVolume = {
-      '1h':  buildBuckets(now.getTime() - hour,      5 * 60 * 1000, 12), // 12 × 5min
-      '24h': buildBuckets(now.getTime() - 24 * hour, 2 * hour,      12), // 12 × 2h
-      '1w':  buildBuckets(now.getTime() - 7 * day,   day,            7), // 7 × 1day
-      '1M':  buildBuckets(now.getTime() - 30 * day,  3 * day,       10), // 10 × 3day
+      '1h': buildBuckets(now.getTime() - hour, 5 * 60 * 1000, 12), // 12 × 5min
+      '24h': buildBuckets(now.getTime() - 24 * hour, 2 * hour, 12), // 12 × 2h
+      '1w': buildBuckets(now.getTime() - 7 * day, day, 7), // 7 × 1day
+      '1M': buildBuckets(now.getTime() - 30 * day, 3 * day, 10), // 10 × 3day
     };
 
     res.json({
