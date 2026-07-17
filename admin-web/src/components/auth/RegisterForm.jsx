@@ -4,7 +4,6 @@ const INITIAL_VALUES = {
   fullName: '',
   email: '',
   phone: '',
-  role: 'Reviewer',
   password: '',
   confirmPassword: '',
 }
@@ -31,7 +30,6 @@ export default function RegisterForm({
     if (
       !values.fullName.trim() ||
       !values.email.trim() ||
-      !values.role ||
       !values.password ||
       !values.confirmPassword
     ) {
@@ -58,7 +56,6 @@ export default function RegisterForm({
       fullName: values.fullName,
       email: values.email,
       phone: values.phone,
-      role: values.role,
       password: values.password,
     })
   }
@@ -109,16 +106,6 @@ export default function RegisterForm({
           type="tel"
           value={values.phone}
         />
-      </label>
-
-      <label className="form-field">
-        <span>
-          Role <em>*</em>
-        </span>
-        <select name="role" onChange={handleChange} value={values.role}>
-          <option value="Reviewer">Reviewer</option>
-          <option value="Admin">Admin</option>
-        </select>
       </label>
 
       <label className="form-field">

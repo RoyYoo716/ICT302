@@ -320,6 +320,12 @@ router.patch('/users/:id', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // An admin cannot change their own role — prevents accidental
+    // self-demotion and keeps role changes peer-reviewed by design.
+    if (target.id === req.user.userId) {
+      return res.status(400).json({ error: 'You cannot change your own role' });
+    }
+
     // LAST-ADMIN GUARD: never allow the system to be left without an admin.
     if (target.role === 'admin' && role === 'user') {
       const adminCount = await prisma.user.count({ where: { role: 'admin' } });

@@ -515,6 +515,12 @@ export async function loginAdmin({ email, password }) {
     method: 'POST',
     body: { email: normalizeEmail(email), password },
   })
+
+  // This dashboard is admin-only. Regular accounts are valid for the
+  // mobile app, but must not get a web session.
+  if (data.user?.role !== 'admin') {
+    throw new Error('This account does not have admin access.')
+  }
   saveSession({ token: data.token, admin: data.user })
   return { admin: data.user }
 }
