@@ -11,10 +11,6 @@ function getInitials(name) {
     .toUpperCase()
 }
 
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
 function validateProfile(form) {
   const errors = {}
   const fullName = form.fullName.trim()
@@ -27,15 +23,7 @@ function validateProfile(form) {
     errors.fullName = 'Use letters, spaces, dots, hyphens, or apostrophes only.'
   }
 
-  if (!email) {
-    errors.email = 'Email Address is required.'
-  } else if (!isValidEmail(email)) {
-    errors.email = 'Enter a valid email address.'
-  }
-
-  if (!phone) {
-    errors.phone = 'Phone Number is required.'
-  } else if (!/^[+\d ]{7,20}$/.test(phone)) {
+  if (phone && !/^[+\d ]{7,20}$/.test(phone)) {
     errors.phone = 'Use +, digits, and spaces only, 7 to 20 characters.'
   }
 
@@ -121,6 +109,15 @@ export default function AccountProfileCard({ message, onSave, profile }) {
       {isEditing ? (
         <form className="settings-profile-form" onSubmit={handleSubmit}>
           <label>
+            <span>Email Address</span>
+            <input
+              type="email"
+              value={form.email}
+              disabled
+            />
+          </label>
+
+          <label>
             <span>Full Name</span>
             <input
               onChange={(event) => updateField('fullName', event.target.value)}
@@ -128,16 +125,6 @@ export default function AccountProfileCard({ message, onSave, profile }) {
               value={form.fullName}
             />
             {errors.fullName ? <small>{errors.fullName}</small> : null}
-          </label>
-
-          <label>
-            <span>Email Address</span>
-            <input
-              onChange={(event) => updateField('email', event.target.value)}
-              type="email"
-              value={form.email}
-            />
-            {errors.email ? <small>{errors.email}</small> : null}
           </label>
 
           <label>

@@ -760,6 +760,16 @@ function adaptUser(u) {
   }
 }
 
+// Session admin → the shape AccountProfileCard renders/edits.
+function adaptProfile(u) {
+  return {
+    fullName: u.fullName,
+    email: u.email,
+    phone: u.phoneNumber || '',
+    role: capitalize(u.role),
+  }
+}
+
 function wait() {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, MOCK_DELAY_MS)
@@ -1529,70 +1539,36 @@ export async function updateUserStatus(id, status) {
   return { user: cloneUser(updatedUser) }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// GET /api/admin/settings
-// Payload: none
-// Expected response: { settings: { profile, notifications } }
-// Purpose: return current admin profile and notification preferences.
+// Settings data lives in the session — no server round-trip.
+// Page expects { settings: { profile } }.
 export async function getAdminSettings() {
-  await wait()
-
-  return { settings: cloneAdminSettings(loadAdminSettings()) }
+  const session = readSession()
+  return {
+    settings: { profile: session?.admin ? adaptProfile(session.admin) : null },
+  }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// PATCH /api/admin/profile
-// Payload: { fullName, email, phone }
-// Expected response: { profile }
-// Purpose: update current admin profile.
+// PATCH /api/auth/profile — updates DB, then refreshes the stored
+// session so the rest of the UI stays in sync.
 export async function updateAdminProfile(payload) {
-  await wait()
-
-  const settings = loadAdminSettings()
-  const nextSettings = {
-    ...settings,
-    profile: {
-      ...settings.profile,
-      fullName: payload.fullName.trim(),
-      email: normalizeEmail(payload.email),
-      phone: payload.phone.trim(),
-    },
-  }
-
-  saveAdminSettings(nextSettings)
-
-  return { profile: { ...nextSettings.profile } }
+  const user = await request('/auth/profile', {
+    method: 'PATCH',
+    body: { fullName: payload.fullName, phoneNumber: payload.phone },
+  })
+  const session = readSession()
+  if (session) saveSession({ ...session, admin: { ...session.admin, ...user } })
+  return { profile: adaptProfile(user) }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// PATCH /api/admin/password
-// Payload: { currentPassword, newPassword }
-// Expected response: { success }
-// Purpose: verify current password and update password.
+// PATCH /api/auth/password — backend verifies the current password.
 export async function updateAdminPassword(payload) {
-  await wait()
-
-  const settings = loadAdminSettings()
-
-  if (payload.currentPassword !== settings.security.currentPassword) {
-    throw new Error('Current password is incorrect.')
-  }
-
-  if (!payload.newPassword || payload.newPassword.length < 6) {
-    throw new Error('New password must be at least 6 characters.')
-  }
-
-  const nextSettings = {
-    ...settings,
-    security: {
-      ...settings.security,
-      currentPassword: payload.newPassword,
+  return request('/auth/password', {
+    method: 'PATCH',
+    body: {
+      currentPassword: payload.currentPassword,
+      newPassword: payload.newPassword,
     },
-  }
-
-  saveAdminSettings(nextSettings)
-
-  return { success: true }
+  })
 }
 
 // Provisional endpoint — to be confirmed with backend team.

@@ -86,7 +86,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, lastlogin: user.lastLogin },
+      user: { id: user.id, fullName: user.fullName, email: user.email, phoneNumber: user.phoneNumber, role: user.role, lastlogin: user.lastLogin },
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -166,6 +166,31 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// PATCH /api/auth/profile — update own fullName / phoneNumber.
+// Email is intentionally NOT editable: it is the login identifier.
+router.patch('/profile', requireAuth, async (req, res) => {
+  try {
+    const { fullName, phoneNumber } = req.body;
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ error: 'fullName is required' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: {
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber?.trim() || null,
+      },
+      select: { id: true, fullName: true, email: true, phoneNumber: true, role: true },
+    });
+
+    res.json(user);
+  } catch (err) {
+    console.error('Profile-update error:', err);
+    res.status(500).json({ error: 'Profile update failed' });
+  }
+});
+
 // --- PATCH /api/auth/password ---
 // Logged-in password change (Settings page). Requires a valid auth token.
 router.patch('/password', requireAuth, async (req, res) => {
@@ -182,7 +207,14 @@ router.patch('/password', requireAuth, async (req, res) => {
 
     const match = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!match) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      // 400, not 401: the auth token is valid — the request payload is wrong.
+      // A 401 here would trip the frontend's session-expiry redirect.
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const sameAsCurrent = await bcrypt.compare(newPassword, user.passwordHash);
+    if (sameAsCurrent) {
+      return res.status(400).json({ error: 'New password must be different from the current password' });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);

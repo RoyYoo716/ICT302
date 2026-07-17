@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 import AccountProfileCard from '../components/settings/AccountProfileCard.jsx'
-import NotificationsCard from '../components/settings/NotificationsCard.jsx'
 import PasswordSecurityCard from '../components/settings/PasswordSecurityCard.jsx'
 import {
   getAdminSettings,
+  logoutAdmin,
   updateAdminPassword,
   updateAdminProfile,
-  updateNotificationSettings,
 } from '../services/api.js'
 
 export default function SettingsPage() {
@@ -65,19 +64,17 @@ export default function SettingsPage() {
 
   async function handlePasswordUpdate(payload) {
     await updateAdminPassword(payload)
-    showTimedMessage(passwordTimerRef, setPasswordMessage, 'Password updated successfully.')
-  }
-
-  async function handleNotificationChange(patch) {
-    const response = await updateNotificationSettings({
-      ...settings.notifications,
-      ...patch,
-    })
-
-    setSettings((currentSettings) => ({
-      ...currentSettings,
-      notifications: response.notifications,
-    }))
+    // Show the success message briefly, then force re-login with the
+    // new password — standard practice after a password change.
+    showTimedMessage(
+      passwordTimerRef,
+      setPasswordMessage,
+      'Password updated. Please sign in again with your new password.',
+    )
+    passwordTimerRef.current = globalThis.setTimeout(async () => {
+      await logoutAdmin()
+      window.location.assign('/login')
+    }, 1500)
   }
 
   return (
@@ -95,10 +92,6 @@ export default function SettingsPage() {
             <PasswordSecurityCard
               message={passwordMessage}
               onPasswordUpdate={handlePasswordUpdate}
-            />
-            <NotificationsCard
-              notifications={settings.notifications}
-              onChange={handleNotificationChange}
             />
           </div>
         )}

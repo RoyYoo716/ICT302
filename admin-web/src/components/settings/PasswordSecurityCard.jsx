@@ -11,6 +11,8 @@ function validatePasswordForm(form) {
     errors.newPassword = 'New Password is required.'
   } else if (form.newPassword.length < 6) {
     errors.newPassword = 'New Password must be at least 6 characters.'
+  } else if (form.newPassword === form.currentPassword) {
+    errors.newPassword = 'New password must be different from the current password.'
   }
 
   if (!form.confirmPassword) {
