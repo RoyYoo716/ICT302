@@ -133,57 +133,6 @@ export default function UsersPage() {
     }
   }
 
-  // async function handleStatusUpdate(id, status) {
-  //   const user = users.find((item) => item.id === id)
-
-  //   if (!user || !confirmStatusChange(user, status)) {
-  //     return
-  //   }
-
-  //   const response = await updateUserStatus(id, status)
-  //   syncUser(response.user)
-  //   showSuccess(`${response.user.fullName} is now ${response.user.status}.`)
-  // }
-
-  // async function handleCreateUser(payload) {
-  //   setIsSubmitting(true)
-
-  //   try {
-  //     const response = await createUser(payload)
-  //     setUsers((currentUsers) => [response.user, ...currentUsers])
-  //     setIsAddUserOpen(false)
-  //     updateQuery({ search: '', role: 'All', status: 'All', page: '1' })
-  //     showSuccess(`${response.user.fullName} has been created.`)
-  //   } finally {
-  //     setIsSubmitting(false)
-  //   }
-  // }
-
-  // async function handleUpdateUser(payload) {
-  //   setIsSubmitting(true)
-
-  //   try {
-  //     const response = await updateUser(editingUser.id, payload)
-  //     syncUser(response.user)
-  //     setEditingUser(null)
-  //     showSuccess(`${response.user.fullName} has been updated.`)
-  //   } finally {
-  //     setIsSubmitting(false)
-  //   }
-  // }
-
-  // async function handleResetPassword(payload) {
-  //   setIsSubmitting(true)
-
-  //   try {
-  //     await resetUserPassword(resetPasswordUser.id, payload)
-  //     showSuccess(`Password reset for ${resetPasswordUser.fullName}.`)
-  //     setResetPasswordUser(null)
-  //   } finally {
-  //     setIsSubmitting(false)
-  //   }
-  // }
-
   return (
     <AdminLayout activeSection="users" title="User Management">
       <main className="users-page">
