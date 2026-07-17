@@ -1,37 +1,36 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
-import ResetPasswordModal from '../components/users/ResetPasswordModal.jsx'
-import UserFormModal from '../components/users/UserFormModal.jsx'
+// import ResetPasswordModal from '../components/users/ResetPasswordModal.jsx'
+// import UserFormModal from '../components/users/UserFormModal.jsx'
 import UserProfileDrawer from '../components/users/UserProfileDrawer.jsx'
 import UserSummaryCard from '../components/users/UserSummaryCard.jsx'
 import UsersTable from '../components/users/UsersTable.jsx'
-import {
-  createUser,
-  getUserById,
-  getUsers,
-  resetUserPassword,
-  updateUser,
-  updateUserStatus,
-} from '../services/api.js'
+import { getUsers, updateUser } from '../services/api.js'
 
 const PAGE_SIZE = 6
-const ROLE_OPTIONS = ['All', 'Super Admin', 'Admin', 'Reviewer']
-const STATUS_OPTIONS = ['All', 'Active', 'Suspended', 'Inactive']
+const ROLE_OPTIONS = ['All', 'Admin', 'User']
+//const STATUS_OPTIONS = ['All', 'Active', 'Suspended', 'Inactive']
 
 function normalizePage(value) {
   const page = Number(value)
   return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
 }
 
-function confirmStatusChange(user, status) {
-  const action = status === 'Suspended' ? 'suspend' : 'restore'
-  const message = `Are you sure you want to ${action} ${user.fullName}?`
+// function confirmStatusChange(user, status) {
+//   const action = status === 'Suspended' ? 'suspend' : 'restore'
+//   const message = `Are you sure you want to ${action} ${user.fullName}?`
 
-  if (typeof globalThis.confirm !== 'function') {
-    return true
-  }
+//   if (typeof globalThis.confirm !== 'function') {
+//     return true
+//   }
 
+//   return globalThis.confirm(message)
+// }
+
+function confirmRoleChange(user, role) {
+  const message = `Change ${user.fullName}'s role to ${role}?`
+  if (typeof globalThis.confirm !== 'function') return true
   return globalThis.confirm(message)
 }
 
@@ -40,70 +39,39 @@ export default function UsersPage() {
   const [users, setUsers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
-  const [editingUser, setEditingUser] = useState(null)
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false)
-  const [resetPasswordUser, setResetPasswordUser] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
 
   const searchTerm = searchParams.get('search') || ''
   const selectedRole = searchParams.get('role') || 'All'
-  const selectedStatus = searchParams.get('status') || 'All'
   const currentPage = normalizePage(searchParams.get('page'))
 
   useEffect(() => {
     let isMounted = true
-
     async function loadUsers() {
-      const response = await getUsers()
-
-      if (!isMounted) {
-        return
-      }
-
+      setIsLoading(true)
+      const response = await getUsers({
+        search: searchTerm,
+        role: selectedRole,
+        page: currentPage,
+        limit: PAGE_SIZE,
+      })
+      if (!isMounted) return
       setUsers(response.users)
+      setPagination(response.pagination)
       setIsLoading(false)
     }
-
     loadUsers()
-
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [searchTerm, selectedRole, currentPage])
 
-  const summary = useMemo(
-    () => ({
-      total: users.length,
-      active: users.filter((user) => user.status === 'Active').length,
-      suspended: users.filter((user) => user.status === 'Suspended').length,
-      twoFactor: users.filter((user) => user.twoFactorEnabled).length,
-    }),
-    [users],
-  )
-
-  const filteredUsers = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
-
-    return users.filter((user) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        user.fullName.toLowerCase().includes(normalizedSearch) ||
-        user.email.toLowerCase().includes(normalizedSearch)
-      const matchesRole = selectedRole === 'All' || user.role === selectedRole
-      const matchesStatus =
-        selectedStatus === 'All' || user.status === selectedStatus
-
-      return matchesSearch && matchesRole && matchesStatus
-    })
-  }, [users, searchTerm, selectedRole, selectedStatus])
-
-  const totalPages = Math.max(Math.ceil(filteredUsers.length / PAGE_SIZE), 1)
+  const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
-  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE
-  const pagedUsers = filteredUsers.slice(startIndex, startIndex + PAGE_SIZE)
-  const startItem = filteredUsers.length === 0 ? 0 : startIndex + 1
-  const endItem = Math.min(startIndex + PAGE_SIZE, filteredUsers.length)
+  const pagedUsers = users // the server already returns just this page
+  const startItem = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
+  const endItem = Math.min(pagination.page * pagination.limit, pagination.total)
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -133,12 +101,6 @@ export default function UsersPage() {
     setSelectedUser((currentUser) =>
       currentUser?.id === updatedUser.id ? updatedUser : currentUser,
     )
-    setEditingUser((currentUser) =>
-      currentUser?.id === updatedUser.id ? updatedUser : currentUser,
-    )
-    setResetPasswordUser((currentUser) =>
-      currentUser?.id === updatedUser.id ? updatedUser : currentUser,
-    )
   }
 
   function showSuccess(message) {
@@ -153,74 +115,80 @@ export default function UsersPage() {
     updateQuery({ role: event.target.value, page: '1' })
   }
 
-  function handleStatusFilterChange(event) {
-    updateQuery({ status: event.target.value, page: '1' })
+  function handleViewUser(id) {
+    const found = users.find((u) => u.id === id);
+    if (found) setSelectedUser(found)
   }
 
-  async function handleViewUser(id) {
-    const response = await getUserById(id)
-    setSelectedUser(response.user)
-  }
-
-  async function handleStatusUpdate(id, status) {
+  async function handleRoleUpdate(id, role) {
     const user = users.find((item) => item.id === id)
-
-    if (!user || !confirmStatusChange(user, status)) {
-      return
-    }
-
-    const response = await updateUserStatus(id, status)
-    syncUser(response.user)
-    showSuccess(`${response.user.fullName} is now ${response.user.status}.`)
-  }
-
-  async function handleCreateUser(payload) {
-    setIsSubmitting(true)
-
+    if (!user || !confirmRoleChange(user, role)) return
     try {
-      const response = await createUser(payload)
-      setUsers((currentUsers) => [response.user, ...currentUsers])
-      setIsAddUserOpen(false)
-      updateQuery({ search: '', role: 'All', status: 'All', page: '1' })
-      showSuccess(`${response.user.fullName} has been created.`)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function handleUpdateUser(payload) {
-    setIsSubmitting(true)
-
-    try {
-      const response = await updateUser(editingUser.id, payload)
+      const response = await updateUser(id, role)
       syncUser(response.user)
-      setEditingUser(null)
-      showSuccess(`${response.user.fullName} has been updated.`)
-    } finally {
-      setIsSubmitting(false)
+      showSuccess(`${response.user.fullName} is now ${response.user.role}.`)
+    } catch (err) {
+      // Surfaces the backend's last-admin guard message.
+      showSuccess(err.message)
     }
   }
 
-  async function handleResetPassword(payload) {
-    setIsSubmitting(true)
+  // async function handleStatusUpdate(id, status) {
+  //   const user = users.find((item) => item.id === id)
 
-    try {
-      await resetUserPassword(resetPasswordUser.id, payload)
-      showSuccess(`Password reset for ${resetPasswordUser.fullName}.`)
-      setResetPasswordUser(null)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  //   if (!user || !confirmStatusChange(user, status)) {
+  //     return
+  //   }
+
+  //   const response = await updateUserStatus(id, status)
+  //   syncUser(response.user)
+  //   showSuccess(`${response.user.fullName} is now ${response.user.status}.`)
+  // }
+
+  // async function handleCreateUser(payload) {
+  //   setIsSubmitting(true)
+
+  //   try {
+  //     const response = await createUser(payload)
+  //     setUsers((currentUsers) => [response.user, ...currentUsers])
+  //     setIsAddUserOpen(false)
+  //     updateQuery({ search: '', role: 'All', status: 'All', page: '1' })
+  //     showSuccess(`${response.user.fullName} has been created.`)
+  //   } finally {
+  //     setIsSubmitting(false)
+  //   }
+  // }
+
+  // async function handleUpdateUser(payload) {
+  //   setIsSubmitting(true)
+
+  //   try {
+  //     const response = await updateUser(editingUser.id, payload)
+  //     syncUser(response.user)
+  //     setEditingUser(null)
+  //     showSuccess(`${response.user.fullName} has been updated.`)
+  //   } finally {
+  //     setIsSubmitting(false)
+  //   }
+  // }
+
+  // async function handleResetPassword(payload) {
+  //   setIsSubmitting(true)
+
+  //   try {
+  //     await resetUserPassword(resetPasswordUser.id, payload)
+  //     showSuccess(`Password reset for ${resetPasswordUser.fullName}.`)
+  //     setResetPasswordUser(null)
+  //   } finally {
+  //     setIsSubmitting(false)
+  //   }
+  // }
 
   return (
     <AdminLayout activeSection="users" title="User Management">
       <main className="users-page">
         <section className="users-summary-grid" aria-label="User summary">
-          <UserSummaryCard label="Total Users" value={summary.total} />
-          <UserSummaryCard label="Active" tone="success" value={summary.active} />
-          <UserSummaryCard label="Suspended" tone="danger" value={summary.suspended} />
-          <UserSummaryCard label="2FA Enabled" tone="lock" value={summary.twoFactor} />
+          <UserSummaryCard label="Total Users" value={pagination.total} />
         </section>
 
         <div className="users-toolbar">
@@ -260,26 +228,6 @@ export default function UsersPage() {
               ))}
             </select>
           </label>
-
-          <label className="users-filter">
-            <span className="sr-only">Status filter</span>
-            <select onChange={handleStatusFilterChange} value={selectedStatus}>
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button
-            className="users-add-button"
-            onClick={() => setIsAddUserOpen(true)}
-            type="button"
-          >
-            <span aria-hidden="true">+</span>
-            Add User
-          </button>
         </div>
 
         {successMessage ? (
@@ -293,10 +241,10 @@ export default function UsersPage() {
             currentPage={safeCurrentPage}
             endItem={endItem}
             onPageChange={(page) => updateQuery({ page: String(page) })}
-            onStatusChange={handleStatusUpdate}
+            onRoleChange={handleRoleUpdate}
             onViewUser={handleViewUser}
             startItem={startItem}
-            totalCount={filteredUsers.length}
+            totalCount={pagination.total}
             totalPages={totalPages}
             users={pagedUsers}
           />
@@ -305,38 +253,7 @@ export default function UsersPage() {
         {selectedUser ? (
           <UserProfileDrawer
             onClose={() => setSelectedUser(null)}
-            onEdit={setEditingUser}
-            onResetPassword={setResetPasswordUser}
-            onStatusChange={handleStatusUpdate}
             user={selectedUser}
-          />
-        ) : null}
-
-        {isAddUserOpen ? (
-          <UserFormModal
-            isSubmitting={isSubmitting}
-            mode="create"
-            onClose={() => setIsAddUserOpen(false)}
-            onSubmit={handleCreateUser}
-          />
-        ) : null}
-
-        {editingUser ? (
-          <UserFormModal
-            isSubmitting={isSubmitting}
-            mode="edit"
-            onClose={() => setEditingUser(null)}
-            onSubmit={handleUpdateUser}
-            user={editingUser}
-          />
-        ) : null}
-
-        {resetPasswordUser ? (
-          <ResetPasswordModal
-            isSubmitting={isSubmitting}
-            onClose={() => setResetPasswordUser(null)}
-            onConfirm={handleResetPassword}
-            user={resetPasswordUser}
           />
         ) : null}
       </main>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { UserRoleBadge, UserStatusBadge } from '../users/UserBadges.jsx'
+import { UserRoleBadge } from '../users/UserBadges.jsx'
 
 function getInitials(name) {
   return name
@@ -112,7 +112,6 @@ export default function AccountProfileCard({ message, onSave, profile }) {
           <em>{profile.email}</em>
           <span>
             <UserRoleBadge role={profile.role} />
-            <UserStatusBadge status={profile.status} />
           </span>
         </div>
       </div>

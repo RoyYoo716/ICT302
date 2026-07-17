@@ -1,4 +1,4 @@
-import { UserRoleBadge, UserStatusBadge } from './UserBadges.jsx'
+import { UserRoleBadge } from './UserBadges.jsx'
 
 function getInitials(name) {
   return name
@@ -89,15 +89,8 @@ function UserActionIcon() {
 
 export default function UserProfileDrawer({
   onClose,
-  onEdit,
-  onResetPassword,
-  onStatusChange,
   user,
 }) {
-  const isSuspended = user.status === 'Suspended'
-  const statusActionLabel = isSuspended ? 'Restore Account' : 'Suspend Account'
-  const nextStatus = isSuspended ? 'Active' : 'Suspended'
-
   return (
     <div className="user-drawer-backdrop" role="presentation">
       <aside
@@ -124,7 +117,6 @@ export default function UserProfileDrawer({
           <em>{user.email}</em>
           <div>
             <UserRoleBadge role={user.role} />
-            <UserStatusBadge status={user.status} />
           </div>
         </section>
 
@@ -132,41 +124,8 @@ export default function UserProfileDrawer({
           <DetailRow label="User ID" value={user.id} />
           <DetailRow label="Joined" value={user.joined} />
           <DetailRow label="Last Login" value={user.lastLogin} />
-          <DetailRow label="Last IP" value={user.lastIp} />
-          <DetailRow label="QR Codes Managed" value={user.qrManaged} />
-          <DetailRow label="Alerts Reviewed" value={user.alertsReviewed} />
-          <DetailRow
-            label="Two-Factor Auth"
-            value={user.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-          />
         </dl>
 
-        <footer className="user-drawer-actions">
-          <button className="user-drawer-primary" onClick={() => onEdit(user)} type="button">
-            <PencilIcon />
-            Edit User
-          </button>
-          <button
-            className="user-drawer-secondary"
-            onClick={() => onResetPassword(user)}
-            type="button"
-          >
-            <KeyIcon />
-            Reset Password
-          </button>
-          <button
-            className={
-              isSuspended
-                ? 'user-drawer-restore'
-                : 'user-drawer-danger'
-            }
-            onClick={() => onStatusChange(user.id, nextStatus)}
-            type="button"
-          >
-            <UserActionIcon />
-            {statusActionLabel}
-          </button>
-        </footer>
       </aside>
     </div>
   )

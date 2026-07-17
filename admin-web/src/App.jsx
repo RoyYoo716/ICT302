@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import RequireAuth from './components/auth/RequireAuth.jsx'
 import AlertsPage from './pages/AlertsPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -18,12 +19,12 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/qr-codes" element={<QRCodeManagementPage />} />
-      <Route path="/qr-codes/:id" element={<QRCodeDetailPage />} />
-      <Route path="/alerts" element={<AlertsPage />} />
-      <Route path="/users" element={<UsersPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
+      <Route path="/qr-codes" element={<RequireAuth><QRCodeManagementPage /></RequireAuth>} />
+      <Route path="/qr-codes/:id" element={<RequireAuth><QRCodeDetailPage /></RequireAuth>} />
+      <Route path="/alerts" element={<RequireAuth><AlertsPage /></RequireAuth>} />
+      <Route path="/users" element={<RequireAuth><UsersPage /></RequireAuth>} />
+      <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )

@@ -743,6 +743,23 @@ function adaptAlert(a) {
   }
 }
 
+// --- Users adapters ---------------------------------------------
+
+// Backend User row → the shape the users table renders.
+// Fields with no backend counterpart (status, 2FA, stats) are
+// deliberately absent — their columns are removed, not faked.
+function adaptUser(u) {
+  return {
+    id: u.id,
+    fullName: u.fullName,
+    email: u.email,
+    phoneNumber: u.phoneNumber || '',
+    role: capitalize(u.role), // 'admin' → 'Admin'
+    joined: u.createdAt ? new Date(u.createdAt).toISOString().slice(0, 10) : '',
+    lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never',
+  }
+}
+
 function wait() {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, MOCK_DELAY_MS)
@@ -1390,15 +1407,16 @@ export async function updateAlertStatus(id, payload) {
   return { alert: adaptAlert(alert) }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// GET /api/users
-// Payload: none
-// Expected response: { users }
-// Purpose: return admin user list.
-export async function getUsers() {
-  await wait()
-
-  return { users: cloneUsers(loadUsers()) }
+// GET /api/admin/users — server-side search + role filter + pagination.
+export async function getUsers({ search = '', role = 'All', page = 1, limit = 6 } = {}) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (search.trim()) params.set('search', search.trim())
+  if (role && role !== 'All') params.set('role', role.toLowerCase())
+  const res = await request(`/admin/users?${params}`)
+  return {
+    users: res.data.map(adaptUser),
+    pagination: res.pagination,
+  }
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -1448,36 +1466,16 @@ export async function createUser(payload) {
   return { user: cloneUser(user) }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// PATCH /api/users/:id
-// Payload: { fullName, email, role, status, twoFactorEnabled }
-// Expected response: { user }
-// Purpose: update user profile, role, status, and 2FA setting.
+// PATCH /api/admin/users/:id — role change only.
+// The backend enforces the last-admin guard; its error message
+// ('Cannot demote the last remaining admin') surfaces to the UI.
 export async function updateUser(id, payload) {
-  await wait()
-
-  const users = loadUsers()
-  const nextUsers = users.map((user) =>
-    user.id === id
-      ? {
-        ...user,
-        fullName: payload.fullName.trim(),
-        email: normalizeEmail(payload.email),
-        role: payload.role,
-        status: payload.status,
-        twoFactorEnabled: Boolean(payload.twoFactorEnabled),
-      }
-      : user,
-  )
-  const updatedUser = nextUsers.find((user) => user.id === id)
-
-  if (!updatedUser) {
-    throw new Error('User not found.')
-  }
-
-  saveUsers(nextUsers)
-
-  return { user: cloneUser(updatedUser) }
+  const role = (typeof payload === 'string' ? payload : payload?.role || '')
+  const user = await request(`/admin/users/${id}`, {
+    method: 'PATCH',
+    body: { role: role.toLowerCase() },
+  })
+  return { user: adaptUser(user) }
 }
 
 // Provisional endpoint — to be confirmed with backend team.

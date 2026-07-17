@@ -1,4 +1,4 @@
-import { UserRoleBadge, UserStatusBadge } from './UserBadges.jsx'
+import { UserRoleBadge } from './UserBadges.jsx'
 
 function getInitials(name) {
   return name
@@ -10,40 +10,11 @@ function getInitials(name) {
     .toUpperCase()
 }
 
-function TwoFactorMark({ enabled }) {
-  return (
-    <span className={enabled ? 'user-2fa-mark is-enabled' : 'user-2fa-mark'}>
-      {enabled ? (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="m5 12 4 4 10-10"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.4"
-          />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="m7 7 10 10M17 7 7 17"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="2.2"
-          />
-        </svg>
-      )}
-    </span>
-  )
-}
-
 export default function UsersTable({
   currentPage,
   endItem,
   onPageChange,
-  onStatusChange,
+  onRoleChange,
   onViewUser,
   startItem,
   totalCount,
@@ -58,20 +29,16 @@ export default function UsersTable({
             <tr>
               <th>User</th>
               <th>Role</th>
-              <th>Status</th>
               <th>Last Login</th>
-              <th>QR Managed</th>
-              <th>Alerts Reviewed</th>
-              <th>2FA</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.length > 0 ? (
               users.map((user) => {
-                const isSuspended = user.status === 'Suspended'
-                const actionLabel = isSuspended ? 'Restore' : 'Suspend'
-                const nextStatus = isSuspended ? 'Active' : 'Suspended'
+                const isAdmin = user.role === 'Admin'
+                const actionLabel = isAdmin ? 'Make User' : 'Make Admin'
+                const nextRole = isAdmin ? 'User' : 'Admin'
 
                 return (
                   <tr key={user.id}>
@@ -87,15 +54,7 @@ export default function UsersTable({
                     <td>
                       <UserRoleBadge role={user.role} />
                     </td>
-                    <td>
-                      <UserStatusBadge status={user.status} />
-                    </td>
                     <td className="users-muted-cell">{user.lastLogin}</td>
-                    <td className="users-number-cell">{user.qrManaged}</td>
-                    <td className="users-number-cell">{user.alertsReviewed}</td>
-                    <td>
-                      <TwoFactorMark enabled={user.twoFactorEnabled} />
-                    </td>
                     <td>
                       <div className="users-action-group">
                         <button
@@ -106,12 +65,8 @@ export default function UsersTable({
                           View
                         </button>
                         <button
-                          className={
-                            isSuspended
-                              ? 'users-status-action users-status-restore'
-                              : 'users-status-action users-status-suspend'
-                          }
-                          onClick={() => onStatusChange(user.id, nextStatus)}
+                          className="users-status-action users-status-restore"
+                          onClick={() => onRoleChange(user.id, nextRole)}
                           type="button"
                         >
                           {actionLabel}
@@ -123,7 +78,7 @@ export default function UsersTable({
               })
             ) : (
               <tr>
-                <td className="users-empty-cell" colSpan="8">
+                <td className="users-empty-cell" colSpan="4">
                   No users found.
                 </td>
               </tr>

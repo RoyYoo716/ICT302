@@ -260,16 +260,19 @@ router.get('/users', async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Number(req.query.limit) || 20);
-    const { search } = req.query;
+    const { search, role } = req.query;
 
-    const where = search
-      ? {
-        OR: [
-          { email: { contains: search, mode: 'insensitive' } },
-          { fullName: { contains: search, mode: 'insensitive' } },
-        ],
-      }
-      : {};
+    const where = {
+      ...(search
+        ? {
+          OR: [
+            { email: { contains: search, mode: 'insensitive' } },
+            { fullName: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+        : {}),
+      ...(role ? { role } : {}),
+    };
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -284,6 +287,7 @@ router.get('/users', async (req, res) => {
           fullName: true,
           phoneNumber: true,
           role: true,
+          lastLogin: true,
           createdAt: true,
         },
       }),

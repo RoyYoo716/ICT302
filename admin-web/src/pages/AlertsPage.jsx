@@ -52,14 +52,6 @@ export default function AlertsPage() {
   )
   const newAlertCount = isLoading ? null : currentNewAlerts.length
 
-  const filteredAlerts = useMemo(() => {
-    if (selectedStatus === 'All') {
-      return alerts
-    }
-
-    return alerts.filter((alert) => alert.status === selectedStatus)
-  }, [alerts, selectedStatus])
-
   const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const pagedAlerts = alerts // the server already returns just this page
