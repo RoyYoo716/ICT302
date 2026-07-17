@@ -23,5 +23,16 @@ app.use('/api/admin', require('./routes/admin'));
 // Static: Landing Page (Vite build copied into backend/landing-dist at deploy).
 // Browser users arrive here via the redirect from GET /api/qr/verify.
 app.use('/landing', express.static(path.join(__dirname, '../landing-dist')));
+app.use(express.static(path.join(__dirname, '../admin-dist')));
+
+// SPA fallback: any non-API, non-file route serves the admin app's
+// index.html so react-router deep links survive a page refresh.
+// (Middleware instead of app.get('*') — Express 5 changed wildcard syntax.)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/landing')) {
+    return next(); // let API 404s stay API 404s
+  }
+  res.sendFile(path.join(__dirname, '../admin-dist/index.html'));
+});
 
 module.exports = app;
