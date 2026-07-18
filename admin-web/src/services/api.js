@@ -540,6 +540,23 @@ export async function registerAdmin({ fullName, email, phone, password }) {
   return { admin: user }
 }
 
+// POST /api/auth/forgot-password — demo mode: the reset link comes
+// back in the response instead of being emailed.
+export async function requestPasswordReset(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: { email: normalizeEmail(email) },
+  })
+}
+
+// POST /api/auth/reset-password — consumes the single-use token.
+export async function resetPassword({ token, newPassword }) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  })
+}
+
 // Provisional endpoint — to be confirmed with backend team.
 // POST /api/auth/logout
 // Payload: none

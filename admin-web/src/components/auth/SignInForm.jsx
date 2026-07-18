@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const INITIAL_VALUES = {
   email: '',
@@ -74,9 +75,9 @@ export default function SignInForm({
         {isSubmitting ? 'Signing In...' : 'Sign In'}
       </button>
 
-      <button className="auth-text-button" type="button">
+      <Link className="auth-text-button" to="/forgot-password">
         Forgot Password?
-      </button>
+      </Link>
 
       <div className="demo-credentials" aria-label="Demo credentials">
         Demo: <strong>admin@secureqr.com</strong> / <strong>Admin2026secure</strong>
