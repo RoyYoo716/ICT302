@@ -6,7 +6,7 @@ import AdminLayout from '../components/layout/AdminLayout.jsx'
 import UserProfileDrawer from '../components/users/UserProfileDrawer.jsx'
 import UserSummaryCard from '../components/users/UserSummaryCard.jsx'
 import UsersTable from '../components/users/UsersTable.jsx'
-import { getUsers, updateUser } from '../services/api.js'
+import { getCurrentAdmin, getUsers, updateUser } from '../services/api.js'
 
 const PAGE_SIZE = 6
 const ROLE_OPTIONS = ['All', 'Admin', 'User']
@@ -40,7 +40,9 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
+  const [currentAdminId, setCurrentAdminId] = useState(null)
 
   const searchTerm = searchParams.get('search') || ''
   const selectedRole = searchParams.get('role') || 'All'
@@ -66,6 +68,10 @@ export default function UsersPage() {
       isMounted = false
     }
   }, [searchTerm, selectedRole, currentPage])
+
+  useEffect(() => {
+    getCurrentAdmin().then((admin) => setCurrentAdminId(admin?.id ?? null))
+  }, [])
 
   const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -126,10 +132,12 @@ export default function UsersPage() {
     try {
       const response = await updateUser(id, role)
       syncUser(response.user)
+      setErrorMessage('') // a success clears any stale error
       showSuccess(`${response.user.fullName} is now ${response.user.role}.`)
     } catch (err) {
-      // Surfaces the backend's last-admin guard message.
-      showSuccess(err.message)
+      setSuccessMessage('') // and an error clears any stale success
+      // Surfaces backend guard messages (last-admin, self-role).
+      setErrorMessage(err.message)
     }
   }
 
@@ -182,11 +190,15 @@ export default function UsersPage() {
         {successMessage ? (
           <p className="users-success-message">{successMessage}</p>
         ) : null}
+        {errorMessage ? (
+          <p className="users-error-message">{errorMessage}</p>
+        ) : null}
 
         {isLoading ? (
           <section className="users-table-card users-loading-card">Loading users...</section>
         ) : (
           <UsersTable
+            currentAdminId={currentAdminId}
             currentPage={safeCurrentPage}
             endItem={endItem}
             onPageChange={(page) => updateQuery({ page: String(page) })}

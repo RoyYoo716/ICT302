@@ -11,3 +11,4 @@ generated/
 test-*.js
 
 landing-dist/
+admin-dist/

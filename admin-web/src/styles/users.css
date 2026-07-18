@@ -196,6 +196,11 @@
   line-height: var(--line-height-body-small);
 }
 
+.users-error-message {
+  color: #dc2626;
+  font-weight: 700;
+}
+
 .users-table-card {
   margin-top: 17px;
   border: 1px solid #e5e7eb;
@@ -384,6 +389,11 @@
   background: #d1fae5;
   color: #047857;
 }
+
+/* .users-status-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+} */
 
 .user-status-suspended {
   border-color: #fecaca;

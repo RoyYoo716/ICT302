@@ -11,6 +11,7 @@ function getInitials(name) {
 }
 
 export default function UsersTable({
+  currentAdminId,
   currentPage,
   endItem,
   onPageChange,
@@ -64,13 +65,17 @@ export default function UsersTable({
                         >
                           View
                         </button>
-                        <button
-                          className="users-status-action users-status-restore"
-                          onClick={() => onRoleChange(user.id, nextRole)}
-                          type="button"
-                        >
-                          {actionLabel}
-                        </button>
+
+                        {user.id !== currentAdminId && (
+                          <button
+                            className="users-status-action users-status-restore"
+                            //disabled={user.id === currentAdminId}
+                            onClick={() => onRoleChange(user.id, nextRole)}
+                            type="button"
+                          >
+                            {actionLabel}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
