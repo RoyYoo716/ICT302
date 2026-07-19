@@ -97,8 +97,16 @@ export default function QRCodeDetailPage() {
                 </dd>
               </div>
               <div>
+                <dt>Creation Date</dt>
+                <dd>{qrCode.creationDate}</dd>
+              </div>
+              <div>
                 <dt>Expiry Date</dt>
                 <dd>{qrCode.expiryDate}</dd>
+              </div>
+              <div>
+                <dt>Created By</dt>
+                <dd></dd>
               </div>
               <div>
                 <dt>Total Scans</dt>

@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -14,8 +14,9 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginRoute() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("alex@example.com");
-  const [password, setPassword] = useState("password");
+  const { registered } = useLocalSearchParams()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -73,7 +74,7 @@ export default function LoginRoute() {
           setEmail(text);
           setError("");
         }}
-        placeholder="alex@example.com"
+        placeholder="Enter your email"
         keyboardType="email-address"
         textContentType="emailAddress"
       />
@@ -96,6 +97,12 @@ export default function LoginRoute() {
       </Pressable>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {registered === "1" && (
+        <Text style={{ color: colors.green500 ?? "#22c55e", marginBottom: 12 }}>
+          Account created. Please sign in.
+        </Text>
+      )}
 
       <GradientButton
         label="Sign In Securely"

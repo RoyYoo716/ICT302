@@ -1,3 +1,46 @@
+import { loadSession, clearSession } from "./storage";
+import { File } from "expo-file-system";
+// ---- Real backend plumbing ---------------------------------------
+// Dev + prod both talk to the live Render backend. If you ever need a
+// local backend, swap BASE_URL to "http://<your-PC-LAN-IP>:3000".
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+// Identifies us as the dedicated app — the server branches on this
+// User-Agent to return JSON instead of the landing page.
+const APP_USER_AGENT = "SecureQRApp/1.0";
+
+async function request(path, { method = "GET", body, headers } = {}) {
+  const session = await loadSession();
+  const token = session?.token || null;
+
+  const response = await fetch(`${BASE_URL}/api${path}`, {
+    method,
+    headers: {
+      "User-Agent": APP_USER_AGENT,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await response.json().catch(() => null);
+
+  // Same rule as the web: a 401 only means "session expired"
+  // if we actually sent a token.
+  if (response.status === 401 && token) {
+    await clearSession();
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || `Request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+
 import {
   mockNotificationPreferences,
   mockSafeResult,
@@ -22,32 +65,27 @@ function wait(ms = MOCK_DELAY_MS) {
 }
 
 export async function login(credentials) {
-  await wait();
-
-  mutableUserProfile = {
-    ...mutableUserProfile,
-    email: credentials?.email || mutableUserProfile.email
-  };
-
-  return {
-    token: "mock-session-token",
-    user: { ...mutableUserProfile }
-  };
+  return request("/auth/login", {
+    method: "POST",
+    body: {
+      email: (credentials?.email || "").trim().toLowerCase(),
+      password: credentials?.password,
+    },
+  });
+  // Backend returns { token, user } — exactly what AuthContext saves.
 }
 
 export async function register(payload) {
-  await wait();
-
-  mutableUserProfile = {
-    ...mutableUserProfile,
-    name: payload?.name || mutableUserProfile.name,
-    email: payload?.email || mutableUserProfile.email
-  };
-
-  return {
-    token: "mock-session-token",
-    user: { ...mutableUserProfile }
-  };
+  const user = await request("/auth/register", {
+    method: "POST",
+    body: {
+      fullName: payload.fullName,
+      email: (payload.email || "").trim().toLowerCase(),
+      phoneNumber: payload.phoneNumber || undefined,
+      password: payload.password,
+    },
+  });
+  return user;
 }
 
 export async function socialSignIn(provider, profile) {
@@ -69,26 +107,36 @@ export async function socialSignIn(provider, profile) {
 }
 
 export async function verifyQRCode(payload) {
-  await wait(700);
-
   const value = payload?.value || "";
-  const domain = getDomain(value);
-  const looksUnsafe = /amaz0n|phishing|blocked|malware|free-iphone/i.test(value);
 
-  if (looksUnsafe) {
+  // Extract the token from the scanned URL. Any QR without a token
+  // param is not one of ours — the backend has nothing to verify.
+  const match = value.match(/[?&]token=([^&\s]+)/);
+  if (!match) {
     return {
-      ...mockWarningResult,
-      destinationUrl: value || mockWarningResult.destinationUrl,
-      domain: domain || mockWarningResult.domain
+      status: "invalid",
+      reason: "Not a secure QR code issued by this system.",
+      destinationUrl: null,
+      domain: null,
+      qrId: null,
+      label: null,
     };
   }
 
+  const result = await request(`/qr/verify?token=${encodeURIComponent(match[1])}`);
+
+  // Adapt the backend contract to what the screens need.
+  const destinationUrl = result.destinationUrl || result.qr?.destinationUrl || null;
   return {
-    ...mockSafeResult,
-    destinationUrl: value || mockSafeResult.destinationUrl,
-    domain: domain || mockSafeResult.domain
+    status: result.status,               // valid | expired | invalid | blacklisted | suspicious
+    reason: result.reason || null,
+    destinationUrl,
+    domain: destinationUrl ? getDomain(destinationUrl) : null,
+    qrId: result.qr?.id || null,          // needed for the tamper report (Step 3)
+    label: result.qr?.label || null,
   };
 }
+
 
 export async function saveScanHistoryRecord(scan) {
   await wait(100);
@@ -138,14 +186,36 @@ export async function deleteScanHistoryRecord(id) {
 }
 
 export async function submitTamperReport(report) {
-  await wait(500);
+  const form = new FormData();
+  form.append("qrCodeId", report.qrCodeId);
+  if (report.description) form.append("description", report.description);
+  if (report.reporterName) form.append("reporterName", report.reporterName);
+  if (report.contactInfo) form.append("contactInfo", report.contactInfo);
+  if (report.location) {
+    form.append("gpsLat", String(report.location.latitude));
+    form.append("gpsLng", String(report.location.longitude));
+  }
+  if (report.photo?.uri) {
+    // SDK 54+ fetch only accepts real Blob/File parts in FormData.
+    // expo-file-system's File implements the Blob interface, so it can
+    // wrap the picker's cached file and stream it as the "photo" part.
+    const file = new File(report.photo.uri);
+    form.append("photo", file);
+  }
 
-  return {
-    id: `report_${Date.now()}`,
-    status: "submitted",
-    receivedAt: new Date().toISOString(),
-    report
-  };
+  // NOTE: no Content-Type header — fetch must generate the multipart
+  // boundary itself. Setting it manually breaks multer parsing.
+  const response = await fetch(`${BASE_URL}/api/alert/report`, {
+    method: "POST",
+    headers: { "User-Agent": APP_USER_AGENT },
+    body: form,
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error || `Report failed (${response.status})`);
+  }
+  return data;
 }
 
 export async function getScanHistory() {
@@ -157,9 +227,8 @@ export async function getScanHistory() {
 }
 
 export async function getUserProfile() {
-  await wait();
-
-  return { ...mutableUserProfile };
+  const session = await loadSession();
+  return session?.user ?? null;
 }
 
 export async function updateUserProfile(profileData) {

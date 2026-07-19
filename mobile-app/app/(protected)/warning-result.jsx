@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { GradientButton, OutlineButton } from "../../src/components/ui/GradientButton";
@@ -10,36 +10,26 @@ import { mockWarningResult } from "../../src/data/mockData";
 
 export default function WarningResultRoute() {
   const params = useLocalSearchParams();
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const result = buildWarningResult(params);
+  const statusMessages = {
+    expired: "This QR code has expired and can no longer be trusted.",
+    invalid: "This QR code could not be verified. It may have been tampered with or was not issued by this system.",
+    blacklisted: "This QR code has been blacklisted by an administrator.",
+    suspicious: "This QR code has been flagged as suspicious following a tamper report."
+  };
 
   function goToReport() {
     router.push({
       pathname: "/(protected)/report",
       params: {
+        qrId: result.qrId,
+        label: result.label,
         destinationUrl: result.destinationUrl,
         domain: result.domain,
         scannedValue: params.scannedValue,
         source: params.source
       }
     });
-  }
-
-  function handleBlockAccess() {
-    Alert.alert(
-      "Confirm Block",
-      "Are you sure you want to block access to this QR code? This action will prevent opening the destination from this scan result.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm Block",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Blocked", "Access blocked for this QR code.");
-          }
-        }
-      ]
-    );
   }
 
   return (
@@ -56,50 +46,23 @@ export default function WarningResultRoute() {
         <Text style={styles.pill}>THREAT DETECTED</Text>
         <Text style={styles.title}>Potentially Unsafe QR Code</Text>
         <Text style={styles.description}>
-          This QR code points to a known phishing domain. Access has been blocked
-          to protect your device.
+          {statusMessages[result.status] ?? result.reason}
         </Text>
 
         <View style={styles.threatCard}>
-          <ThreatRow label="Threat Type" value={result.threatType} />
-          <ThreatRow label="Risk Level" value={result.riskLevel} />
-          <ThreatRow label="Domain" value={result.domain} />
-          <ThreatRow label="Reported by" value={`${result.reportedBy.toLocaleString()} users`} />
+          <ThreatRow label="Status" value={result.status.toUpperCase()} />
+          {result.reason ? <ThreatRow label="Reason" value={result.reason} /> : null}
+          {result.domain ? <ThreatRow label="Destination" value={result.domain} /> : null}
         </View>
 
-        {detailsOpen ? (
-          <View style={styles.detailsCard}>
-            <Text style={styles.detailsTitle}>Why is this unsafe?</Text>
-            {result.reasons.map((reason) => (
-              <View style={styles.reasonRow} key={reason}>
-                <Text style={styles.bullet}>-</Text>
-                <Text style={styles.reason}>{reason}</Text>
-              </View>
-            ))}
-          </View>
+        {result.qrId ? (
+          <OutlineButton
+            label="Report QR Code"
+            icon="flag"
+            onPress={goToReport}
+            style={styles.outlineButton}
+          />
         ) : null}
-
-        <GradientButton
-          label="Block Access"
-          icon="shield"
-          variant="danger"
-          onPress={handleBlockAccess}
-          style={styles.blockButton}
-        />
-        <OutlineButton
-          label={detailsOpen ? "Hide Details" : "View Details"}
-          icon="info"
-          onPress={() => setDetailsOpen((current) => !current)}
-          borderColor="rgba(255,63,82,0.45)"
-          textColor={colors.danger300}
-          style={styles.outlineButton}
-        />
-        <OutlineButton
-          label="Report QR Code"
-          icon="flag"
-          onPress={goToReport}
-          style={styles.outlineButton}
-        />
         <Pressable onPress={() => router.replace("/(protected)/dashboard")}>
           <Text style={styles.dashboardLink}>Back to Dashboard</Text>
         </Pressable>
@@ -109,15 +72,15 @@ export default function WarningResultRoute() {
 }
 
 function buildWarningResult(params) {
-  return {
-    ...mockWarningResult,
-    destinationUrl: stringParam(params.destinationUrl, mockWarningResult.destinationUrl),
-    domain: stringParam(params.domain, mockWarningResult.domain),
-    threatType: stringParam(params.threatType, mockWarningResult.threatType),
-    riskLevel: stringParam(params.riskLevel, mockWarningResult.riskLevel),
-    reportedBy: numberParam(params.reportedBy, mockWarningResult.reportedBy),
-    reasons: parseReasons(params.reasons) ?? mockWarningResult.reasons
+  const result = {
+    status: stringParam(params.status, "invalid"),
+    reason: stringParam(params.reason, ""),
+    destinationUrl: stringParam(params.destinationUrl, ""),
+    domain: stringParam(params.domain, ""),
+    qrId: stringParam(params.qrId, ""),
+    label: stringParam(params.label, "")
   };
+  return result;
 }
 
 function stringParam(value, fallback) {
@@ -245,42 +208,7 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     textAlign: "right"
   },
-  detailsCard: {
-    width: "100%",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,63,82,0.35)",
-    backgroundColor: colors.surface,
-    padding: 16,
-    marginBottom: 13
-  },
-  detailsTitle: {
-    color: colors.white,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: "800",
-    marginBottom: 8
-  },
-  reasonRow: {
-    flexDirection: "row",
-    gap: 7,
-    marginBottom: 4
-  },
-  bullet: {
-    color: colors.danger300,
-    fontSize: 13,
-    lineHeight: 18
-  },
-  reason: {
-    flex: 1,
-    color: colors.blue300,
-    fontSize: 12,
-    lineHeight: 18
-  },
-  blockButton: {
-    marginBottom: 10,
-    shadowColor: colors.danger500
-  },
+
   outlineButton: {
     marginBottom: 10
   },

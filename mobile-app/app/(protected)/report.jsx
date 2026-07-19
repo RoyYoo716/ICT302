@@ -9,6 +9,7 @@ import { GradientButton, OutlineButton } from "../../src/components/ui/GradientB
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
 import { submitTamperReport } from "../../src/services/api";
+import { useAuth } from "../../src/context/AuthContext";
 
 const LOCATION_PERMISSION_MESSAGE = "Location access is required to attach GPS evidence.";
 const LOCATION_SETTINGS_MESSAGE = "Location access is required. Open Android Settings to enable it.";
@@ -17,8 +18,10 @@ const CAMERA_SETTINGS_MESSAGE = "Camera access is required. Open Android Setting
 
 export default function ReportRoute() {
   const params = useLocalSearchParams();
+  const { user } = useAuth();
+  const [reporterName, setReporterName] = useState(user?.fullName ?? "");
   const [description, setDescription] = useState("");
-  const [contact, setContact] = useState("");
+  const [contact, setContact] = useState(user?.email ?? "");
   const [location, setLocation] = useState(null);
   const [evidencePhoto, setEvidencePhoto] = useState(null);
   const [locationPermission, setLocationPermission] = useState(null);
@@ -174,8 +177,14 @@ export default function ReportRoute() {
 
   async function handleSubmit() {
     const trimmedDescription = description.trim();
+    const qrCodeId = stringParam(params.qrId);
     setErrorMessage("");
     setStatusMessage("");
+
+    if (!qrCodeId) {
+      setErrorMessage("This report has no target QR code. Please rescan and try again.");
+      return;
+    }
 
     if (!trimmedDescription) {
       setErrorMessage("Description is required before submitting a report.");
@@ -186,22 +195,17 @@ export default function ReportRoute() {
 
     try {
       await submitTamperReport({
+        qrCodeId,
         description: trimmedDescription,
-        contact: contact.trim(),
-        qrCode: {
-          destinationUrl: stringParam(params.destinationUrl),
-          domain: stringParam(params.domain),
-          scannedValue: stringParam(params.scannedValue),
-          source: stringParam(params.source)
-        },
+        reporterName: reporterName.trim(),
+        contactInfo: contact.trim(),
         location: location
           ? {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              accuracy: location.coords.accuracy
-            }
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          }
           : null,
-        evidencePhotoUri: evidencePhoto?.uri ?? null
+        photo: evidencePhoto
       });
 
       setStatusMessage("Report submitted successfully.");
@@ -212,8 +216,9 @@ export default function ReportRoute() {
         submitRedirectTimer.current = null;
         router.replace("/(protected)/dashboard");
       }, 900);
-    } catch {
-      setErrorMessage("Unable to submit report right now.");
+    } catch (err) {
+      console.error("report failed:", err);
+      setErrorMessage(err.message || "Unable to submit report right now.");
     } finally {
       setSubmitting(false);
     }
@@ -234,9 +239,9 @@ export default function ReportRoute() {
   const cameraDenied = cameraPermission && !cameraPermission.granted;
   const cameraBlocked = cameraDenied && cameraPermission.canAskAgain === false;
   const locationHelper = locationDenied
-      ? LOCATION_PERMISSION_MESSAGE
-      : location
-        ? `Captured: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`
+    ? LOCATION_PERMISSION_MESSAGE
+    : location
+      ? `Captured: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`
       : "Attach your current GPS position to help verify where this QR code was found.";
   const locationButtonLabel = locationBlocked
     ? "Open Location Settings"
@@ -333,6 +338,18 @@ export default function ReportRoute() {
           multiline
           textAlignVertical="top"
           style={styles.descriptionInput}
+        />
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>OPTIONAL REPORTER NAME</Text>
+        <TextInput
+          value={reporterName}
+          onChangeText={setReporterName}
+          placeholder="Your name (optional)"
+          placeholderTextColor="#275D9A"
+          autoCapitalize="words"
+          style={styles.contactInput}
         />
       </View>
 

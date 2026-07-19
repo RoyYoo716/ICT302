@@ -13,7 +13,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function createForm(profile) {
   return {
-    name: profile?.name ?? "",
+    name: profile?.fullName ?? "",
     email: profile?.email ?? "",
     phone: profile?.phone ?? "",
     memberSince: profile?.memberSince ?? "",
@@ -91,17 +91,17 @@ export default function AccountInformationRoute() {
       const result =
         source === "camera"
           ? await ImagePicker.launchCameraAsync({
-              mediaTypes: ["images"],
-              allowsEditing: true,
-              aspect: [1, 1],
-              quality: 0.85
-            })
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85
+          })
           : await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ["images"],
-              allowsEditing: true,
-              aspect: [1, 1],
-              quality: 0.85
-            });
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85
+          });
 
       if (result.canceled) return;
 
@@ -165,7 +165,7 @@ export default function AccountInformationRoute() {
     }
   }
 
-  const avatarLetter = (form.name || profile?.name || "A").slice(0, 1);
+  const avatarLetter = (form.name || profile?.fullName || "?").slice(0, 1);
 
   return (
     <AppScreen scroll contentStyle={styles.screen}>
@@ -208,8 +208,6 @@ export default function AccountInformationRoute() {
             <Feather name="edit-2" size={14} color={colors.white} />
           </Pressable>
         ) : null}
-
-        <Text style={styles.planBadge}>{profile?.plan ?? "PRO PLAN"}</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}

@@ -8,20 +8,14 @@ import { typography } from "../../src/constants/typography";
 import { saveScanHistoryRecord, verifyQRCode } from "../../src/services/api";
 
 const steps = [
-  { label: "Decoding QR payload...", doneAt: 20 },
-  { label: "Checking threat database...", doneAt: 48 },
-  { label: "Analyzing URL structure...", doneAt: 74 },
-  { label: "Verifying SSL certificate...", doneAt: 100 }
+  { label: "Contacting verification server...", doneAt: 40 },
+  { label: "Validating signature & expiry...", doneAt: 75 },
+  { label: "Checking blacklist status...", doneAt: 100 }
 ];
 
 export default function AnalyzingRoute() {
   const params = useLocalSearchParams();
-  const scannedValue =
-    typeof params.value === "string" && params.value.length > 0
-      ? params.value
-      : params.result === "warning"
-        ? "http://amaz0n-deals.ru/promo"
-        : "https://pay.stripe.com/checkout/abc123xyz";
+  const scannedValue = typeof params.value === "string" ? params.value : "";
   const source = typeof params.source === "string" ? params.source : "camera";
   const mockFallback = params.mockFallback === "true";
   const [progress, setProgress] = useState(0);
@@ -38,6 +32,11 @@ export default function AnalyzingRoute() {
     if (progress < 100) return;
 
     let mounted = true;
+
+    if (!scannedValue) {
+      router.replace("/(protected)/scan");
+      return;
+    }
 
     async function finish() {
       const verification = await verifyQRCode({
@@ -60,31 +59,21 @@ export default function AnalyzingRoute() {
 
       const routeParams = {
         status: verification.status,
-        destinationUrl: verification.destinationUrl,
-        domain: verification.domain,
+        reason: verification.reason ?? "",
+        destinationUrl: verification.destinationUrl ?? "",
+        domain: verification.domain ?? "",
+        qrId: verification.qrId ?? "",
+        label: verification.label ?? "",
         scannedValue,
-        source,
-        mockFallback: mockFallback ? "true" : "false"
+        source
       };
 
-      if (verification.status === "safe") {
-        router.replace({
-          pathname: "/(protected)/safe-result",
-          params: routeParams
-        });
+      if (verification.status === "valid") {
+        router.replace({ pathname: "/(protected)/safe-result", params: routeParams });
         return;
       }
 
-      router.replace({
-        pathname: "/(protected)/warning-result",
-        params: {
-          ...routeParams,
-          threatType: verification.threatType,
-          riskLevel: verification.riskLevel,
-          reportedBy: String(verification.reportedBy ?? ""),
-          reasons: JSON.stringify(verification.reasons ?? [])
-        }
-      });
+      router.replace({ pathname: "/(protected)/warning-result", params: routeParams });
     }
 
     finish();

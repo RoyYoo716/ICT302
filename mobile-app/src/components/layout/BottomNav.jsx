@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
@@ -12,8 +13,16 @@ const items = [
 ];
 
 export function BottomNav({ active }) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.nav}>
+    <View style={[styles.nav,
+    {
+      height: spacing.bottomNavHeight + insets.bottom,
+      paddingBottom: insets.bottom,
+    },]}>
+
+
       {items.map((item) => {
         const isActive = active === item.key;
 

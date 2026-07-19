@@ -164,6 +164,7 @@ const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 // Backend QR row → the shape QRCodeTable renders.
 function adaptQRCode(qr) {
   const expires = qr.expiresAt ? new Date(qr.expiresAt) : null
+  const creates = qr.createdAt ? new Date(qr.createdAt) : null
   return {
     id: qr.id,
     label: qr.label,
@@ -173,6 +174,7 @@ function adaptQRCode(qr) {
     expiresAt: expires ? expires.toLocaleString() : '',
     scans: qr.scanCount ?? 0,
     alerts: qr.alertCount ?? 0,
+    creationDate: creates ? creates.toISOString().slice(0, 10) : '',
     createdAt: qr.createdAt,
   }
 }

@@ -14,14 +14,8 @@ export default function SafeResultRoute() {
   const params = useLocalSearchParams();
   const [linkError, setLinkError] = useState("");
   const [savingScan, setSavingScan] = useState(false);
-  const destinationUrl =
-    typeof params.destinationUrl === "string" && params.destinationUrl.length > 0
-      ? params.destinationUrl
-      : mockSafeResult.destinationUrl;
-  const domain =
-    typeof params.domain === "string" && params.domain.length > 0
-      ? params.domain
-      : mockSafeResult.domain;
+  const destinationUrl = stringParam(params.destinationUrl) || "";
+  const domain = stringParam(params.domain) || "";
   const hasDestinationUrl = Boolean(destinationUrl);
 
   async function handleOpenLink() {
@@ -67,6 +61,20 @@ export default function SafeResultRoute() {
     }
   }
 
+  function goToReport() {
+    router.push({
+      pathname: "/(protected)/report",
+      params: {
+        qrId: stringParam(params.qrId),
+        label: stringParam(params.label),
+        destinationUrl,
+        domain,
+        scannedValue: stringParam(params.scannedValue),
+        source: stringParam(params.source)
+      }
+    });
+  }
+
   return (
     <AppScreen scroll contentStyle={styles.screen}>
       <Pressable style={styles.backButton} onPress={() => router.replace("/(protected)/dashboard")}>
@@ -90,9 +98,9 @@ export default function SafeResultRoute() {
           <Text style={styles.url}>{destinationUrl || "No destination URL"}</Text>
           <View style={styles.divider} />
           <View style={styles.securityRow}>
-            <SecurityItem icon="shield" text="SSL Valid" green />
-            <SecurityItem icon="globe" text={domain} />
-            <SecurityItem icon="check-circle" text="No threats" green />
+            <SecurityItem icon="check-circle" text="Signature verified" />
+            <SecurityItem icon="clock" text="Not expired" />
+            <SecurityItem icon="shield" text="Not blacklisted" />
           </View>
         </View>
 
@@ -109,6 +117,12 @@ export default function SafeResultRoute() {
           label="Save Scan"
           icon="bookmark"
           onPress={handleSaveScan}
+          style={styles.saveButton}
+        />
+        <OutlineButton
+          label="Report Tampering"
+          icon="flag"
+          onPress={goToReport}
           style={styles.saveButton}
         />
 

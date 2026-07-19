@@ -13,10 +13,11 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterRoute() {
   const { signUp } = useAuth();
-  const [fullName, setFullName] = useState("Alex Johnson");
-  const [email, setEmail] = useState("alex@example.com");
-  const [password, setPassword] = useState("password");
-  const [confirmPassword, setConfirmPassword] = useState("password");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,10 +62,11 @@ export default function RegisterRoute() {
     setError("");
 
     try {
-      await signUp({ name: fullName, email, password });
-      router.replace("/(protected)/dashboard");
-    } catch {
-      setError("Unable to create account. Please try again.");
+      await signUp({ fullName, email, phoneNumber, password });
+      router.replace({ pathname: "/(public)/login", params: { registered: "1" } });
+    } catch (err) {
+      console.error("register failed:", err);
+      setError(err.message || "Unable to create account. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -90,7 +92,7 @@ export default function RegisterRoute() {
           setFullName(text);
           setError("");
         }}
-        placeholder="Alex Johnson"
+        placeholder="Name"
         autoCapitalize="words"
         textContentType="name"
       />
@@ -102,9 +104,21 @@ export default function RegisterRoute() {
           setEmail(text);
           setError("");
         }}
-        placeholder="alex@example.com"
+        placeholder="E-mail"
         keyboardType="email-address"
         textContentType="emailAddress"
+      />
+      <FormField
+        label="PHONE NUMBER (OPTIONAL)"
+        icon="phone"
+        value={phoneNumber}
+        onChangeText={(text) => {
+          setPhoneNumber(text);
+          setError("");
+        }}
+        placeholder="+65 XXXX XXXX"
+        keyboardType="phone-pad"
+        textContentType="telephoneNumber"
       />
       <FormField
         label="PASSWORD"
