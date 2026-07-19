@@ -36,6 +36,10 @@ export default function RegisterForm({
       return 'Please complete all required fields.'
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+      return 'Please enter a valid email address.'
+    }
+
     if (values.password !== values.confirmPassword) {
       return 'Passwords do not match.'
     }

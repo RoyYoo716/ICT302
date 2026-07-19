@@ -7,6 +7,8 @@ import QRCodeDetailPage from './pages/QRCodeDetailPage.jsx'
 import QRCodeManagementPage from './pages/QRCodeManagementPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import './styles/alerts.css'
 import './styles/auth.css'
 import './styles/dashboard.css'
@@ -19,6 +21,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/qr-codes" element={<RequireAuth><QRCodeManagementPage /></RequireAuth>} />
       <Route path="/qr-codes/:id" element={<RequireAuth><QRCodeDetailPage /></RequireAuth>} />

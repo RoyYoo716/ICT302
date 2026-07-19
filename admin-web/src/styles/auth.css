@@ -318,6 +318,35 @@
   text-align: center;
 }
 
+/* Forgot / Reset password pages — the same classes applied to <Link>
+   (renders as <a>) need anchor resets that the button rules don't cover. */
+a.primary-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+a.auth-text-button {
+  display: block;
+  width: fit-content;
+  text-decoration: none;
+}
+
+.auth-switch a {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.auth-switch a:hover {
+  color: var(--color-primary-hover);
+}
+
 @media (max-width: 560px) {
   .auth-page {
     padding: 38px 16px 28px;

@@ -540,6 +540,23 @@ export async function registerAdmin({ fullName, email, phone, password }) {
   return { admin: user }
 }
 
+// POST /api/auth/forgot-password — demo mode: the reset link comes
+// back in the response instead of being emailed.
+export async function requestPasswordReset(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: { email: normalizeEmail(email) },
+  })
+}
+
+// POST /api/auth/reset-password — consumes the single-use token.
+export async function resetPassword({ token, newPassword }) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  })
+}
+
 // Provisional endpoint — to be confirmed with backend team.
 // POST /api/auth/logout
 // Payload: none
@@ -714,6 +731,26 @@ export async function updateUser(id, payload) {
   const user = await request(`/admin/users/${id}`, {
     method: 'PATCH',
     body: { role: role.toLowerCase() },
+  })
+  return { user: adaptUser(user) }
+}
+
+// DELETE /api/admin/users/:id — permanent.
+export async function deleteUser(id) {
+  return request(`/admin/users/${id}`, { method: 'DELETE' })
+}
+
+// POST /api/admin/users — admin creates an account directly.
+export async function createUser(payload) {
+  const user = await request('/admin/users', {
+    method: 'POST',
+    body: {
+      fullName: payload.fullName,
+      email: payload.email,
+      phoneNumber: payload.phone || undefined,
+      password: payload.password,
+      role: (payload.role || 'user').toLowerCase(),
+    },
   })
   return { user: adaptUser(user) }
 }

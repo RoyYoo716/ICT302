@@ -16,6 +16,7 @@ export default function UsersTable({
   endItem,
   onPageChange,
   onRoleChange,
+  onDelete,
   onViewUser,
   startItem,
   totalCount,
@@ -69,13 +70,21 @@ export default function UsersTable({
                         {user.id !== currentAdminId && (
                           <button
                             className="users-status-action users-status-restore"
-                            //disabled={user.id === currentAdminId}
                             onClick={() => onRoleChange(user.id, nextRole)}
                             type="button"
                           >
                             {actionLabel}
                           </button>
                         )}
+
+                        <button
+                          className="users-status-action users-delete-action"
+                          disabled={user.id === currentAdminId || isAdmin}
+                          onClick={() => onDelete(user.id)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>

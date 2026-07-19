@@ -22,8 +22,16 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'fullName, email, and password are required' });
     }
 
+    // Basic email format check — full RFC validation is overkill;
+    // "something@something.something" catches real-world mistakes.
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
     // Reject if the email is already taken.
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
@@ -34,7 +42,7 @@ router.post('/register', async (req, res) => {
     const user = await prisma.user.create({
       data: {
         fullName,
-        email,
+        email: normalizedEmail,
         phoneNumber: phoneNumber || null,
         passwordHash,
         role: 'user', // always 'user' — admins are promoted later
