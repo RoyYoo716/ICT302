@@ -13,11 +13,26 @@ function getStatusActions(status) {
     return ['Active']
   }
 
+  if (status === 'Expired') {
+    // Terminal state: the expiry is baked into the printed JWT itself,
+    // so no status change can ever make this code scannable again.
+    return []
+  }
+
+  // Suspicious: admin can clear the flag or confirm the threat.
   return ['Active', 'Blacklisted']
 }
 
 function getActionLabel(status) {
-  return status === 'Active' ? 'Activate' : 'Blacklist'
+  if (status === 'Active') {
+    return 'Activate'
+  }
+
+  if (status === 'Blacklisted') {
+    return 'Blacklist'
+  }
+
+  return status
 }
 
 export default function QRCodeTable({
