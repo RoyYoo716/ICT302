@@ -5,6 +5,7 @@ const QRCode = require('qrcode');
 const prisma = require('../config/prisma');
 const { requireAdmin } = require('../middleware/auth');
 const { buildVerifyUrl } = require('../services/qrService');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
@@ -304,6 +305,57 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// POST /api/admin/users — admin creates an account directly.
+// Same rules as self-registration (hash, email format, uniqueness),
+// plus the admin may set the role at creation.
+router.post('/users', requireAdmin, async (req, res) => {
+  try {
+    const { fullName, email, phoneNumber, password, role } = req.body;
+
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ error: 'fullName, email, and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    const allowedRoles = ['user', 'admin'];
+    const finalRole = allowedRoles.includes(role) ? role : 'user';
+
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        fullName: fullName.trim(),
+        email: normalizedEmail,
+        phoneNumber: phoneNumber?.trim() || null,
+        passwordHash,
+        role: finalRole,
+      },
+      select: {
+        id: true, fullName: true, email: true, phoneNumber: true,
+        role: true, lastLogin: true, createdAt: true,
+      },
+    });
+
+    res.status(201).json(user);
+  } catch (err) {
+    console.error('Admin create-user error:', err);
+    res.status(500).json({ error: 'User creation failed' });
+  }
+});
+
 // --- PATCH /api/admin/users/:id ---
 // Role change, protected by the last-admin guard.
 router.patch('/users/:id', async (req, res) => {
@@ -346,6 +398,41 @@ router.patch('/users/:id', async (req, res) => {
   } catch (err) {
     console.error('Admin user update error:', err);
     res.status(500).json({ error: 'Role change failed' });
+  }
+});
+
+// DELETE /api/admin/users/:id — permanently remove an account.
+// Rules: no self-deletion; admins must be demoted to user first
+// (which also protects the last admin via the existing demotion guard).
+router.delete('/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user.userId) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+
+    const target = await prisma.user.findUnique({ where: { id } });
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.role === 'admin') {
+      return res.status(400).json({ error: 'Demote this admin to user before deleting' });
+    }
+
+    // Transaction: clear QR audit references, then delete — both or neither.
+    await prisma.$transaction([
+      prisma.qrCode.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      }),
+      prisma.user.delete({ where: { id } }),
+    ]);
+
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('Admin delete-user error:', err);
+    res.status(500).json({ error: 'User deletion failed' });
   }
 });
 

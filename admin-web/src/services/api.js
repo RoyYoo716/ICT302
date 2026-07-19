@@ -735,6 +735,26 @@ export async function updateUser(id, payload) {
   return { user: adaptUser(user) }
 }
 
+// DELETE /api/admin/users/:id — permanent.
+export async function deleteUser(id) {
+  return request(`/admin/users/${id}`, { method: 'DELETE' })
+}
+
+// POST /api/admin/users — admin creates an account directly.
+export async function createUser(payload) {
+  const user = await request('/admin/users', {
+    method: 'POST',
+    body: {
+      fullName: payload.fullName,
+      email: payload.email,
+      phoneNumber: payload.phone || undefined,
+      password: payload.password,
+      role: (payload.role || 'user').toLowerCase(),
+    },
+  })
+  return { user: adaptUser(user) }
+}
+
 // Settings data lives in the session — no server round-trip.
 // Page expects { settings: { profile } }.
 export async function getAdminSettings() {

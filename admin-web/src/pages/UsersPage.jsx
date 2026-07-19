@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 // import ResetPasswordModal from '../components/users/ResetPasswordModal.jsx'
-// import UserFormModal from '../components/users/UserFormModal.jsx'
+import UserFormModal from '../components/users/UserFormModal.jsx'
 import UserProfileDrawer from '../components/users/UserProfileDrawer.jsx'
 import UserSummaryCard from '../components/users/UserSummaryCard.jsx'
 import UsersTable from '../components/users/UsersTable.jsx'
-import { getCurrentAdmin, getUsers, updateUser } from '../services/api.js'
+import { getCurrentAdmin, getUsers, updateUser, createUser, deleteUser } from '../services/api.js'
+
 
 const PAGE_SIZE = 6
 const ROLE_OPTIONS = ['All', 'Admin', 'User']
@@ -42,6 +43,7 @@ export default function UsersPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false)
   const [currentAdminId, setCurrentAdminId] = useState(null)
 
   const searchTerm = searchParams.get('search') || ''
@@ -141,6 +143,42 @@ export default function UsersPage() {
     }
   }
 
+  async function handleDeleteUser(id) {
+    const user = users.find((item) => item.id === id)
+    if (!user) return
+    if (
+      typeof globalThis.confirm === 'function' &&
+      !globalThis.confirm(`Delete ${user.fullName}? This cannot be undone.`)
+    ) {
+      return
+    }
+    try {
+      await deleteUser(id)
+      setErrorMessage('')
+      showSuccess(`${user.fullName} has been deleted.`)
+      setUsers((prev) => prev.filter((item) => item.id !== id))
+      setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }))
+    } catch (err) {
+      setSuccessMessage('')
+      setErrorMessage(err.message)
+    }
+  }
+
+  async function handleCreateUser(payload) {
+    try {
+      const response = await createUser(payload)
+      setIsAddUserOpen(false)
+      setErrorMessage('')
+      showSuccess(`${response.user.fullName} has been created.`)
+      setUsers((prev) => [response.user, ...prev])
+      setPagination((prev) => ({ ...prev, total: prev.total + 1 }))
+    } catch (err) {
+      setSuccessMessage('')
+      setErrorMessage(err.message)
+      setIsAddUserOpen(false)
+    }
+  }
+
   return (
     <AdminLayout activeSection="users" title="User Management">
       <main className="users-page">
@@ -185,6 +223,14 @@ export default function UsersPage() {
               ))}
             </select>
           </label>
+
+          <button
+            className="primary-action"
+            onClick={() => setIsAddUserOpen(true)}
+            type="button"
+          >
+            Add User
+          </button>
         </div>
 
         {successMessage ? (
@@ -203,6 +249,7 @@ export default function UsersPage() {
             endItem={endItem}
             onPageChange={(page) => updateQuery({ page: String(page) })}
             onRoleChange={handleRoleUpdate}
+            onDelete={handleDeleteUser}
             onViewUser={handleViewUser}
             startItem={startItem}
             totalCount={pagination.total}
@@ -215,6 +262,14 @@ export default function UsersPage() {
           <UserProfileDrawer
             onClose={() => setSelectedUser(null)}
             user={selectedUser}
+          />
+        ) : null}
+
+        {isAddUserOpen ? (
+          <UserFormModal
+            mode="create"
+            onClose={() => setIsAddUserOpen(false)}
+            onSubmit={handleCreateUser}
           />
         ) : null}
       </main>

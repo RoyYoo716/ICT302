@@ -19,6 +19,7 @@ export default function AlertsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [alerts, setAlerts] = useState([])
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
+  const [globalNewCount, setGlobalNewCount] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [isSavingAlert, setIsSavingAlert] = useState(false)
@@ -46,11 +47,17 @@ export default function AlertsPage() {
     }
   }, [selectedStatus, currentPage])
 
-  const currentNewAlerts = useMemo(
-    () => alerts.filter((alert) => alert.status === 'New'),
-    [alerts],
-  )
-  const newAlertCount = isLoading ? null : currentNewAlerts.length
+  // Global count of New alerts for the sidebar badge — the list above
+  // only knows the current page, so ask the server for the true total.
+  useEffect(() => {
+    let isMounted = true
+    getAlerts({ status: 'New', page: 1, limit: 1 }).then((res) => {
+      if (isMounted) setGlobalNewCount(res.pagination.total)
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [alerts]) // refresh after any list change (e.g. resolving an alert)
 
   const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -133,7 +140,7 @@ export default function AlertsPage() {
   return (
     <AdminLayout
       activeSection="alerts"
-      alertNotifications={isLoading ? null : currentNewAlerts}
+      alertNotifications={globalNewCount === null ? null : Array.from({ length: globalNewCount })}
       title="Tamper Alerts"
     >
       <main className="alerts-page">
@@ -148,8 +155,6 @@ export default function AlertsPage() {
               ))}
             </select>
           </label>
-
-          <p>{newAlertCount ?? 0} new alerts requiring review</p>
         </div>
 
         {isLoading ? (

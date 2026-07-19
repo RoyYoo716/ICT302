@@ -79,6 +79,10 @@ export default function QRCodeDetailPage() {
                 <dd>{qrCode.id}</dd>
               </div>
               <div>
+                <dt>Label</dt>
+                <dd>{qrCode.label || '—'}</dd>
+              </div>
+              <div>
                 <dt>Destination URL</dt>
                 <dd>
                   <a href={qrCode.destinationUrl} target="_blank" rel="noreferrer">
