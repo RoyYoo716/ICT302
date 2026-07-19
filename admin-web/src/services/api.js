@@ -40,13 +40,13 @@ async function request(path, { method = 'GET', body, headers } = {}) {
   // are normal auth failures — let the backend's message surface instead
   // of hijacking them into a redirect.
   if (response.status === 401 && token) {
-    removeStorage(SESSION_KEY)
+    clearSession()
     window.location.assign('/login')
     throw new Error('Session expired. Please sign in again.')
   }
 
   if (response.status === 403 && token && data?.error === 'Admin access required') {
-    removeStorage(SESSION_KEY)
+    clearSession()
     window.location.assign('/login')
     throw new Error('Your admin access has changed. Please sign in again.')
   }
@@ -273,21 +273,6 @@ function writeStorage(key, value) {
   }
 }
 
-function removeStorage(key) {
-  const storage = getStorage()
-
-  if (!storage) {
-    memoryStorage.delete(key)
-    return
-  }
-
-  try {
-    storage.removeItem(key)
-  } catch {
-    memoryStorage.delete(key)
-  }
-}
-
 function normalizeEmail(email) {
   return email.trim().toLowerCase()
 }
@@ -304,15 +289,50 @@ function saveStoredAdmins(admins) {
   writeStorage(REGISTERED_ADMINS_KEY, JSON.stringify(admins))
 }
 
-function saveSession(admin) {
-  writeStorage(SESSION_KEY, JSON.stringify(admin))
+function getSessionStorage() {
+  return globalThis.sessionStorage || globalThis.window?.sessionStorage || null
+}
+
+function saveSession(session) {
+  const storage = getSessionStorage()
+  if (!storage) return
+
+  try {
+    storage.setItem(SESSION_KEY, JSON.stringify(session))
+  } catch {
+    return
+  }
+
+  // Remove the former shared-tab session after the migration.
+  try {
+    globalThis.localStorage?.removeItem(SESSION_KEY)
+  } catch {
+    // The tab-scoped session is already saved; legacy cleanup is best-effort.
+  }
 }
 
 function readSession() {
+  const storage = getSessionStorage()
+  if (!storage) return null
+
   try {
-    return JSON.parse(readStorage(SESSION_KEY))
+    return JSON.parse(storage.getItem(SESSION_KEY))
   } catch {
     return null
+  }
+}
+
+function clearSession() {
+  try {
+    getSessionStorage()?.removeItem(SESSION_KEY)
+  } catch {
+    // Redirect/logout must continue even if browser storage is unavailable.
+  }
+
+  try {
+    globalThis.localStorage?.removeItem(SESSION_KEY)
+  } catch {
+    // Legacy cleanup is best-effort.
   }
 }
 
@@ -572,7 +592,7 @@ export async function resetPassword({ token, newPassword }) {
 // Purpose: clear the current admin session.
 // JWT is stateless — logging out is purely client-side.
 export async function logoutAdmin() {
-  removeStorage(SESSION_KEY)
+  clearSession()
   return { success: true }
 }
 
@@ -582,7 +602,7 @@ export async function getCurrentAdmin() {
 
   const user = await request('/auth/me')
   if (user.role !== 'admin') {
-    removeStorage(SESSION_KEY)
+    clearSession()
     return null
   }
 

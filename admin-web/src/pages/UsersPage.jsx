@@ -10,6 +10,7 @@ import { getCurrentAdmin, getUsers, updateUser, createUser, deleteUser } from '.
 
 
 const PAGE_SIZE = 6
+const USERS_REFRESH_INTERVAL_MS = 10_000
 const ROLE_OPTIONS = ['All', 'Admin', 'User']
 //const STATUS_OPTIONS = ['All', 'Active', 'Suspended', 'Inactive']
 
@@ -52,27 +53,57 @@ export default function UsersPage() {
 
   useEffect(() => {
     let isMounted = true
-    async function loadUsers() {
-      setIsLoading(true)
-      const response = await getUsers({
-        search: searchTerm,
-        role: selectedRole,
-        page: currentPage,
-        limit: PAGE_SIZE,
-      })
-      if (!isMounted) return
-      setUsers(response.users)
-      setPagination(response.pagination)
-      setIsLoading(false)
+    let requestInFlight = false
+
+    async function loadUsers({ initial = false } = {}) {
+      if (requestInFlight) return
+      requestInFlight = true
+      if (initial) setIsLoading(true)
+
+      try {
+        const response = await getUsers({
+          search: searchTerm,
+          role: selectedRole,
+          page: currentPage,
+          limit: PAGE_SIZE,
+        })
+        if (!isMounted) return
+
+        setUsers(response.users)
+        setPagination(response.pagination)
+      } catch (err) {
+        if (isMounted) setErrorMessage(err.message)
+      } finally {
+        requestInFlight = false
+        if (isMounted && initial) setIsLoading(false)
+      }
     }
-    loadUsers()
+
+    function refreshVisibleUsers() {
+      if (document.visibilityState === 'visible') {
+        loadUsers()
+      }
+    }
+
+    loadUsers({ initial: true })
+    const intervalId = window.setInterval(refreshVisibleUsers, USERS_REFRESH_INTERVAL_MS)
+    window.addEventListener('focus', refreshVisibleUsers)
+    document.addEventListener('visibilitychange', refreshVisibleUsers)
+
     return () => {
       isMounted = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', refreshVisibleUsers)
+      document.removeEventListener('visibilitychange', refreshVisibleUsers)
     }
   }, [searchTerm, selectedRole, currentPage])
 
   useEffect(() => {
-    getCurrentAdmin().then((admin) => setCurrentAdminId(admin?.id ?? null))
+    getCurrentAdmin()
+      .then((admin) => setCurrentAdminId(admin?.id ?? null))
+      .catch(() => {
+        // AdminLayout owns session-error handling and redirects.
+      })
   }, [])
 
   const totalPages = pagination.totalPages || 1

@@ -16,6 +16,8 @@ const FALLBACK_ADMIN = {
   initials: 'AD',
 }
 
+const SESSION_REVALIDATION_INTERVAL_MS = 10_000
+
 let cachedNewAlertNotifications = null
 
 function getNewAlertNotifications(alerts) {
@@ -165,21 +167,46 @@ export default function AdminLayout({
 
   useEffect(() => {
     let isMounted = true
+    let requestInFlight = false
 
-    async function loadAdmin() {
-      const currentAdmin = await getCurrentAdmin()
-      if (!isMounted) {
-        return
+    async function validateAdminSession({ initial = false } = {}) {
+      if (requestInFlight) return
+      requestInFlight = true
+
+      try {
+        const currentAdmin = await getCurrentAdmin()
+        if (!isMounted) return
+
+        setAdmin(currentAdmin)
+        if (initial) setIsLoading(false)
+      } catch {
+        // The API helper handles invalid sessions and redirects to login.
+        // A temporary network failure should not erase a valid rendered session.
+        if (isMounted && initial) setIsLoading(false)
+      } finally {
+        requestInFlight = false
       }
-
-      setAdmin(currentAdmin)
-      setIsLoading(false)
     }
 
-    loadAdmin()
+    function revalidateVisibleSession() {
+      if (document.visibilityState === 'visible') {
+        validateAdminSession()
+      }
+    }
+
+    validateAdminSession({ initial: true })
+    const intervalId = window.setInterval(
+      revalidateVisibleSession,
+      SESSION_REVALIDATION_INTERVAL_MS,
+    )
+    window.addEventListener('focus', revalidateVisibleSession)
+    document.addEventListener('visibilitychange', revalidateVisibleSession)
 
     return () => {
       isMounted = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', revalidateVisibleSession)
+      document.removeEventListener('visibilitychange', revalidateVisibleSession)
     }
   }, [])
 

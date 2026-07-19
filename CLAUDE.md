@@ -141,7 +141,8 @@ Schema decisions (documented with rationale — do not revisit):
 
 - `src/services/api.js` was originally a **1,580-line localStorage simulator with zero real HTTP calls**; now a real API service (~790 lines incl. session helpers).
 - Dev: Vite proxy `/api` → `http://localhost:3000`. Prod: same-origin (served by Express).
-- Session storage contract: store `{ token, admin }`; backend login returns `{ token, user: { id, fullName, email, role } }` — **map `user` → `admin`**.
+- Admin session contract: store `{ token, admin }` in tab-scoped `sessionStorage`; backend login returns `{ token, user: { id, fullName, email, role } }` — **map `user` → `admin`**. Separate tabs may sign in as different administrators; closing a tab ends that tab's session.
+- `AdminLayout` revalidates `/api/auth/me` on entry, window focus, visibility return, and every 10 seconds. The Users page refreshes its list on the same focus/10-second cadence so role changes made by another administrator appear without a manual reload.
 - Route guards: `RequireAuth` component gates all dashboard routes; auth pages include Sign in, Register, **Forgot Password, Reset Password**.
 - Pages, all on real API: **Dashboard** (stat cards, 4-tab scan volume chart, status donut, Recent Activity), **QR Codes** (server-side search/filter/pagination, generate form with label, CSV export, detail pop-up with Label row; first table column widened to 220px), **Alerts** (photo evidence, GPS formatting, status filter, resolve/reopen; IDs displayed as `alert.id.slice(0, 8)` and `alert.qrLabel || alert.qrCodeId`), **Users** (search, add, role change, delete), **Settings** (profile edit + password change).
 - Global alert badge count reflects real unresolved alerts.

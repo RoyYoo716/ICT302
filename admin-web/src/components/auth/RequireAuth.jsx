@@ -8,7 +8,7 @@ const SESSION_KEY = 'vafpqr.admin.session'
 
 function hasSession() {
     try {
-        const raw = localStorage.getItem(SESSION_KEY)
+        const raw = sessionStorage.getItem(SESSION_KEY)
         if (!raw) return false
         const session = JSON.parse(raw)
         return Boolean(session?.token)
