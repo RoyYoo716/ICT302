@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const ROLE_OPTIONS = ['Super Admin', 'Admin', 'Reviewer']
+const ROLE_OPTIONS = ['User', 'Admin']
 const STATUS_OPTIONS = ['Active', 'Suspended', 'Inactive']
 
 function isValidEmail(email) {
@@ -11,9 +11,8 @@ function getInitialForm(user) {
   return {
     fullName: user?.fullName || '',
     email: user?.email || '',
-    role: user?.role || 'Reviewer',
+    role: user?.role || 'User',
     status: user?.status || 'Active',
-    twoFactorEnabled: Boolean(user?.twoFactorEnabled),
     password: '',
     confirmPassword: '',
   }
@@ -91,7 +90,6 @@ export default function UserFormModal({
       email: form.email.trim(),
       role: form.role,
       status: form.status,
-      twoFactorEnabled: form.twoFactorEnabled,
       password: form.password,
     })
   }
@@ -168,15 +166,6 @@ export default function UserFormModal({
               {errors.status ? <small>{errors.status}</small> : null}
             </label>
           </div>
-
-          <label className="user-checkbox-field">
-            <input
-              checked={form.twoFactorEnabled}
-              onChange={(event) => updateField('twoFactorEnabled', event.target.checked)}
-              type="checkbox"
-            />
-            <span>2FA Enabled</span>
-          </label>
 
           {!isEdit ? (
             <div className="user-form-grid">
