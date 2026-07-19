@@ -1,3 +1,46 @@
+import { loadSession, clearSession } from "./storage";
+
+// ---- Real backend plumbing ---------------------------------------
+// Dev + prod both talk to the live Render backend. If you ever need a
+// local backend, swap BASE_URL to "http://<your-PC-LAN-IP>:3000".
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+// Identifies us as the dedicated app — the server branches on this
+// User-Agent to return JSON instead of the landing page.
+const APP_USER_AGENT = "SecureQRApp/1.0";
+
+async function request(path, { method = "GET", body, headers } = {}) {
+  const session = await loadSession();
+  const token = session?.token || null;
+
+  const response = await fetch(`${BASE_URL}/api${path}`, {
+    method,
+    headers: {
+      "User-Agent": APP_USER_AGENT,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await response.json().catch(() => null);
+
+  // Same rule as the web: a 401 only means "session expired"
+  // if we actually sent a token.
+  if (response.status === 401 && token) {
+    await clearSession();
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || `Request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+
 import {
   mockNotificationPreferences,
   mockSafeResult,
@@ -22,32 +65,27 @@ function wait(ms = MOCK_DELAY_MS) {
 }
 
 export async function login(credentials) {
-  await wait();
-
-  mutableUserProfile = {
-    ...mutableUserProfile,
-    email: credentials?.email || mutableUserProfile.email
-  };
-
-  return {
-    token: "mock-session-token",
-    user: { ...mutableUserProfile }
-  };
+  return request("/auth/login", {
+    method: "POST",
+    body: {
+      email: (credentials?.email || "").trim().toLowerCase(),
+      password: credentials?.password,
+    },
+  });
+  // Backend returns { token, user } — exactly what AuthContext saves.
 }
 
 export async function register(payload) {
-  await wait();
-
-  mutableUserProfile = {
-    ...mutableUserProfile,
-    name: payload?.name || mutableUserProfile.name,
-    email: payload?.email || mutableUserProfile.email
-  };
-
-  return {
-    token: "mock-session-token",
-    user: { ...mutableUserProfile }
-  };
+  const user = await request("/auth/register", {
+    method: "POST",
+    body: {
+      fullName: payload.fullName,
+      email: (payload.email || "").trim().toLowerCase(),
+      phoneNumber: payload.phoneNumber || undefined,
+      password: payload.password,
+    },
+  });
+  return user;
 }
 
 export async function socialSignIn(provider, profile) {
@@ -157,9 +195,8 @@ export async function getScanHistory() {
 }
 
 export async function getUserProfile() {
-  await wait();
-
-  return { ...mutableUserProfile };
+  const session = await loadSession();
+  return session?.user ?? null;
 }
 
 export async function updateUserProfile(profileData) {

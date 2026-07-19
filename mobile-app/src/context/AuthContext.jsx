@@ -45,11 +45,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signUp(payload) {
-    const response = await register(payload);
-    setSession(response.token);
-    setUser(response.user);
-    await saveSession({ token: response.token, user: response.user });
-    return response;
+    return register(payload);
   }
 
   async function signInWithProvider(provider, profile) {

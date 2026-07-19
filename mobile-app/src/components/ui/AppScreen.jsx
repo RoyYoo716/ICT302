@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/colors";
 
@@ -12,18 +12,23 @@ export function AppScreen({
 }) {
   return (
     <SafeAreaView style={[styles.safe, safeStyle]} edges={["top", "bottom"]}>
-      {scroll ? (
-        <ScrollView
-          style={[styles.root, style]}
-          contentContainerStyle={[styles.scrollContent, contentStyle]}
-          showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[styles.root, style, contentStyle]}>{children}</View>
-      )}
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        {scroll ? (
+          <ScrollView
+            style={[styles.root, style]}
+            contentContainerStyle={[styles.scrollContent, contentStyle]}
+            showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[styles.root, style, contentStyle]}>{children}</View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

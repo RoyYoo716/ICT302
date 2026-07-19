@@ -49,7 +49,7 @@ export default function DashboardRoute() {
         <View style={styles.header}>
           <View>
             <Text style={styles.welcome}>WELCOME BACK</Text>
-            <Text style={styles.name}>{profile?.name ?? "Alex Johnson"}</Text>
+            <Text style={styles.name}>{profile?.fullName ?? ""}</Text>
           </View>
           <Pressable onPress={() => router.push("/(protected)/profile")}>
             <LinearGradient
@@ -62,7 +62,7 @@ export default function DashboardRoute() {
                 <Image source={{ uri: profile.avatarUri }} style={styles.avatarImage} />
               ) : (
                 <Text style={styles.avatarText}>
-                  {(profile?.name ?? "Alex").slice(0, 1)}
+                  {(profile?.fullName ?? "?").slice(0, 1)}
                 </Text>
               )}
             </LinearGradient>

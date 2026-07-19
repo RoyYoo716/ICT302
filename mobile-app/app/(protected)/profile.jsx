@@ -85,11 +85,7 @@ export default function ProfileRoute() {
     router.replace("/(public)/login");
   }
 
-  const user = profile ?? {
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    plan: "PRO PLAN"
-  };
+  const user = profile ?? {};
   const menuSections = sections.map((section) => {
     if (section.title !== "ACCOUNT") return section;
 
@@ -116,13 +112,12 @@ export default function ProfileRoute() {
             {user.avatarUri ? (
               <Image source={{ uri: user.avatarUri }} style={styles.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{user.name.slice(0, 1)}</Text>
+              <Text style={styles.avatarText}>{(user.fullName ?? "?").slice(0, 1)}</Text>
             )}
           </LinearGradient>
           <View style={styles.userCopy}>
-            <Text style={styles.userName}>{user.name}</Text>
+            <Text style={styles.userName}>{user.fullName}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
-            <Text style={styles.plan}>{user.plan}</Text>
           </View>
         </View>
 
