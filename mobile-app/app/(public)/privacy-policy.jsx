@@ -8,47 +8,37 @@ const sections = [
   {
     title: "1. Information We Collect",
     body:
-      "Account Information: When you create an account, we collect your name, email address, and hashed password. We do not store plain-text passwords.\n\nDevice Information: We collect your device model, OS version, and a unique device identifier for security purposes only.\n\nScan Metadata: QR code payloads are transmitted to our servers for threat analysis. After analysis is complete, the payload is immediately discarded. We retain only the threat classification result and timestamp, not the QR content itself."
+      "Account Information: When you create an account, the service stores your name, email address, optional phone number, and a one-way hash of your password. Plain-text passwords are not stored.\n\nScan Records: The verification service records the QR record identifier when available, verification result, timestamp, IP address, and user-agent information. The mobile app also keeps your recent scan history locally on your device."
   },
   {
     title: "2. How We Use Your Information",
     body:
-      "We use the information we collect to: (a) provide and maintain the App's scanning and threat-analysis features; (b) authenticate your identity and secure your account; (c) improve our threat intelligence databases; (d) send security alerts and account notifications you have opted into; and (e) comply with legal obligations."
+      "The service uses account information to authenticate you and maintain your profile. Scan information is used to verify issued QR codes, show scan history, and support administrative monitoring. Notification delivery is not currently implemented."
   },
   {
-    title: "3. Data Sharing",
+    title: "3. Tamper Reports",
     body:
-      "We do not sell, trade, or rent your personal information to third parties. We may share anonymized, aggregated threat data with security research partners to improve the global threat landscape. We may disclose information to law enforcement if required by a valid legal order."
+      "When you submit a tamper report, the service stores the QR code reference and description. Your name, contact details, location, and photo are included only when you provide or permit them. Administrators can review submitted reports."
   },
   {
-    title: "4. Data Retention",
+    title: "4. Local Data",
     body:
-      "Account data is retained for as long as your account is active. Upon account deletion, all personal data is permanently purged within 30 days. Anonymized threat classification data may be retained indefinitely for research purposes."
+      "Your authentication session, local scan history, and profile image are stored on your device. Clearing the app's data or uninstalling the app removes this local information. The profile image is not uploaded to the backend."
   },
   {
     title: "5. Data Security",
     body:
-      "We use industry-standard encryption (AES-256 at rest, TLS 1.3 in transit) to protect your data. Access to user data is strictly limited to authorized personnel under confidentiality obligations. We conduct regular third-party security audits."
+      "Passwords are hashed before database storage. Authenticated API requests use signed access tokens, and QR verification is performed by the server. No security control can eliminate every risk, so users should still review a destination before opening it."
   },
   {
-    title: "6. Your Rights",
+    title: "6. Data Access and Correction",
     body:
-      "Under applicable privacy and data protection laws, including Singapore's PDPA where applicable, you may request access to the personal data we hold about you, request correction of inaccurate data, withdraw consent for optional processing, and ask questions about how your data is handled.\n\nTo exercise these rights, contact privacy@vafpqr.io."
+      "You can view and update your name and phone number in Account Information. Your email address remains the account login identifier and cannot currently be changed from the app."
   },
   {
-    title: "7. Cookies & Tracking",
+    title: "7. Current Limitations",
     body:
-      "The mobile App does not use cookies. Our web properties use minimal first-party analytics cookies. We do not use cross-site tracking, fingerprinting, or behavioral advertising. You can opt out of analytics in your device settings."
-  },
-  {
-    title: "8. Children's Privacy",
-    body:
-      "The App is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you believe we have inadvertently collected such information, contact us immediately at privacy@vafpqr.io."
-  },
-  {
-    title: "9. Contact & DPO",
-    body:
-      "Data Protection Officer:\nprivacy@vafpqr.io\n\nVafpqr Security Inc.\n333 North Bridge Rd\nSingapore 188721"
+      "The current app does not provide account deletion, notification preferences, or server-synced profile images. Contact the project administrator if you need assistance with backend-held account or report data."
   }
 ];
 
@@ -63,14 +53,14 @@ export default function PrivacyPolicyRoute() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.updated}>Last updated: June 1, 2026 - Singapore PDPA compliant</Text>
+        <Text style={styles.updated}>Last updated: July 20, 2026</Text>
 
         <View style={styles.infoCard}>
           <Feather name="shield" size={17} color={colors.green300} />
           <Text style={styles.infoText}>
-            VAFPQR is built on a zero-knowledge principle. We do not sell your
-            data. We do not store your scan history on our servers. Your privacy
-            is foundational to what we do.
+            This notice describes the data currently handled by the VAFPQR
+            project. It does not claim features or safeguards that have not been
+            implemented.
           </Text>
         </View>
 

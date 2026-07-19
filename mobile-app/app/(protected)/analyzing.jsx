@@ -18,7 +18,6 @@ export default function AnalyzingRoute() {
   const params = useLocalSearchParams();
   const scannedValue = typeof params.value === "string" ? params.value : "";
   const source = typeof params.source === "string" ? params.source : "camera";
-  const mockFallback = params.mockFallback === "true";
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -41,16 +40,12 @@ export default function AnalyzingRoute() {
 
     async function finish() {
       const verification = await verifyQRCode({
-        value: scannedValue,
-        source,
-        mockFallback
+        value: scannedValue
       });
       if (!mounted) return;
 
-      let savedScan = null;
-
       try {
-        savedScan = await saveScanHistoryRecord({
+        await saveScanHistoryRecord({
           ...verification,
           scannedValue,
           source
@@ -67,7 +62,6 @@ export default function AnalyzingRoute() {
         domain: verification.domain ?? "",
         qrId: verification.qrId ?? "",
         label: verification.label ?? "",
-        scanId: savedScan?.id ?? "",
         scannedValue,
         source
       };
@@ -85,7 +79,7 @@ export default function AnalyzingRoute() {
     return () => {
       mounted = false;
     };
-  }, [progress, scannedValue, source, mockFallback]);
+  }, [progress, scannedValue, source]);
 
   return (
     <AppScreen contentStyle={styles.screen}>
@@ -105,13 +99,9 @@ export default function AnalyzingRoute() {
 
       <Text style={styles.title}>Analyzing QR Code...</Text>
       <Text style={styles.subtitle}>
-        Our AI is verifying this QR code against{"\n"}50M+ known threat signatures
+        The verification server is checking the QR signature, expiry, and
+        current status.
       </Text>
-      {mockFallback ? (
-        <Text style={styles.fallbackNote}>
-          Mock scan fallback is active for this result.
-        </Text>
-      ) : null}
 
       <View style={styles.stepList}>
         {steps.map((step) => {
@@ -202,15 +192,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
     marginBottom: 28
-  },
-  fallbackNote: {
-    color: colors.warning300,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: -18,
-    marginBottom: 22
   },
   stepList: {
     width: "100%",

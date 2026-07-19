@@ -542,8 +542,8 @@ export async function registerAdmin({ fullName, email, phone, password }) {
   return { admin: user }
 }
 
-// POST /api/auth/forgot-password — demo mode: the reset link comes
-// back in the response instead of being emailed.
+// POST /api/auth/forgot-password — returns the reset link used by
+// the in-app reset-password screen.
 export async function requestPasswordReset(email) {
   return request('/auth/forgot-password', {
     method: 'POST',

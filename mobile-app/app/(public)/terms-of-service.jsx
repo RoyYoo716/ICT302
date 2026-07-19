@@ -8,12 +8,12 @@ const sections = [
   {
     title: "1. Acceptance of Terms",
     body:
-      'By downloading, installing, or using VAFPQR ("the App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App. VAFPQR is operated by Vafpqr Security Inc. ("we," "us," or "our"). These Terms constitute a legally binding agreement between you and Vafpqr Security Inc.'
+      'By using VAFPQR ("the App"), you agree to use it responsibly and in accordance with applicable rules. If you do not agree, do not use the App.'
   },
   {
     title: "2. Description of Service",
     body:
-      "VAFPQR is a mobile security application that analyzes QR codes for potential threats, phishing attempts, malware, and other malicious content before allowing users to access linked content. The App uses proprietary threat intelligence databases and AI-powered analysis to assess the safety of scanned QR codes in real time."
+      "VAFPQR verifies QR codes issued by this system. The server checks the QR token's signature and expiry and checks whether its database record is active, suspicious, or blacklisted before returning a result."
   },
   {
     title: "3. Eligibility",
@@ -31,31 +31,31 @@ const sections = [
       "You agree not to misuse the App, interfere with security features, reverse engineer the App, submit harmful content, or use the service to violate any applicable laws or third-party rights."
   },
   {
-    title: "6. Threat Analysis Results",
+    title: "6. Verification Results",
     body:
-      "VAFPQR provides security risk assessments based on available threat intelligence and automated analysis. Results are provided for informational purposes and do not guarantee that a QR code, website, or destination is completely safe or unsafe."
+      "A passed result confirms that the QR code was issued by this system, its signed token is valid and unexpired, and its record was not suspicious or blacklisted at verification time. It does not inspect destination websites for phishing, malware, or other content and does not guarantee that a destination is safe."
   },
   {
     title: "7. Disclaimer of Warranties",
     body:
-      'THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. WE DO NOT WARRANT THAT THE APP WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE FROM VIRUSES OR OTHER HARMFUL COMPONENTS. VAFPQR DOES NOT GUARANTEE THAT ALL THREATS WILL BE DETECTED - YOU USE THE APP AT YOUR OWN RISK.',
+      'THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE." WE DO NOT WARRANT THAT THE APP WILL BE UNINTERRUPTED OR ERROR-FREE. QR VERIFICATION DOES NOT ANALYZE OR GUARANTEE THE SAFETY OF DESTINATION CONTENT. YOU SHOULD REVIEW A DESTINATION BEFORE OPENING IT.',
     strong: true
   },
   {
     title: "8. Limitation of Liability",
     body:
-      "TO THE MAXIMUM EXTENT PERMITTED BY LAW, VAFPQR SECURITY INC. SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF DATA, LOSS OF PROFITS, OR UNAUTHORIZED ACCESS TO YOUR DEVICE, ARISING OUT OF YOUR USE OF THE APP.",
+      "TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE PROJECT TEAM SHALL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM USE OF THE APP.",
     strong: true
   },
   {
     title: "9. Changes to Terms",
     body:
-      "We reserve the right to modify these Terms at any time. We will notify you of material changes through the App or by email. Your continued use of the App following notification constitutes your acceptance of the revised Terms."
+      "These terms may be updated as the project changes. The updated date shown in the app indicates the current version."
   },
   {
     title: "10. Contact Us",
     body:
-      "If you have questions about these Terms, please contact us at:\n\nVafpqr Security Inc.\nlegal@vafpqr.io\n333 North Bridge Rd\nSingapore 188721"
+      "Contact the VAFPQR project administrator if you have questions about the service or these terms."
   }
 ];
 
@@ -70,7 +70,7 @@ export default function TermsOfServiceRoute() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.updated}>Last updated: June 1, 2026 - Effective immediately</Text>
+        <Text style={styles.updated}>Last updated: July 20, 2026</Text>
 
         {sections.map((section) => (
           <View key={section.title} style={styles.section}>
@@ -84,8 +84,7 @@ export default function TermsOfServiceRoute() {
         <View style={styles.noticeBox}>
           <Text style={styles.noticeText}>
             By using VAFPQR, you acknowledge that you have read, understood, and
-            agree to be bound by these Terms of Service. For questions, contact{" "}
-            <Text style={styles.noticeLink}>legal@vafpqr.io</Text>.
+            agree to these Terms of Service.
           </Text>
         </View>
       </View>
@@ -170,8 +169,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "700"
   },
-  noticeLink: {
-    color: colors.blue300,
-    fontWeight: "800"
-  }
 });

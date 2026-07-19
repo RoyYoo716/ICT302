@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { FormField } from "../../src/components/ui/FormField";
@@ -8,26 +8,52 @@ import { GradientButton } from "../../src/components/ui/GradientButton";
 import { SecureLogo } from "../../src/components/ui/SecureLogo";
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
+import { requestPasswordReset } from "../../src/services/api";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordRoute() {
   const [email, setEmail] = useState("");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSendResetLink() {
+  async function handleCreateResetLink() {
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
-      Alert.alert("Forgot Password", "Please enter your email address.");
+      setError("Please enter your email address.");
       return;
     }
 
     if (!emailPattern.test(trimmedEmail)) {
-      Alert.alert("Forgot Password", "Please enter a valid email address.");
+      setError("Please enter a valid email address.");
       return;
     }
 
-    Alert.alert("Forgot Password", "Password reset link sent successfully.");
+    setLoading(true);
+    setError("");
+
+    try {
+      setResult(await requestPasswordReset(trimmedEmail));
+    } catch (apiError) {
+      setError(apiError.message || "Unable to create a reset link.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleOpenResetForm() {
+    const token = getTokenFromResetLink(result?.resetLink);
+    if (!token) {
+      setError("The reset link is missing its token. Please create a new link.");
+      return;
+    }
+
+    router.push({
+      pathname: "/(public)/reset-password",
+      params: { token }
+    });
   }
 
   return (
@@ -40,26 +66,63 @@ export default function ForgotPasswordRoute() {
       <View style={styles.header}>
         <Text style={styles.title}>Forgot Password</Text>
         <Text style={styles.subtitle}>
-          Enter your email address and we will send you a password reset link.
+          Enter your email address to create a password reset link.
         </Text>
       </View>
 
-      <FormField
-        label="EMAIL ADDRESS"
-        icon="user"
-        value={email}
-        onChangeText={setEmail}
-        placeholder="alex@example.com"
-        keyboardType="email-address"
-        textContentType="emailAddress"
-      />
+      {result ? (
+        <View style={styles.resultCard}>
+          <View style={styles.resultIcon}>
+            <Feather name="check" size={22} color={colors.green500} />
+          </View>
+          <Text style={styles.resultTitle}>Reset request completed</Text>
+          <Text style={styles.resultMessage}>{result.message}</Text>
+          {result.resetLink ? (
+            <GradientButton
+              label="Open Reset Form"
+              icon="arrow-right"
+              iconPosition="right"
+              onPress={handleOpenResetForm}
+              variant="blue"
+              style={styles.sendButton}
+            />
+          ) : null}
+          <Pressable
+            style={styles.tryAgainButton}
+            onPress={() => {
+              setResult(null);
+              setError("");
+            }}
+          >
+            <Text style={styles.tryAgainText}>Use another email</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <FormField
+            label="EMAIL ADDRESS"
+            icon="user"
+            value={email}
+            onChangeText={(value) => {
+              setEmail(value);
+              setError("");
+            }}
+            placeholder="Enter your email"
+            keyboardType="email-address"
+            textContentType="emailAddress"
+          />
 
-      <GradientButton
-        label="Send Reset Link"
-        onPress={handleSendResetLink}
-        variant="blue"
-        style={styles.sendButton}
-      />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <GradientButton
+            label="Create Reset Link"
+            onPress={handleCreateResetLink}
+            loading={loading}
+            variant="blue"
+            style={styles.sendButton}
+          />
+        </>
+      )}
 
       <Pressable
         style={styles.backButton}
@@ -70,6 +133,18 @@ export default function ForgotPasswordRoute() {
       </Pressable>
     </AppScreen>
   );
+}
+
+function getTokenFromResetLink(resetLink) {
+  if (typeof resetLink !== "string") return "";
+  const match = resetLink.match(/[?&]token=([^&]+)/);
+  if (!match) return "";
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return "";
+  }
 }
 
 const styles = StyleSheet.create({
@@ -110,6 +185,63 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     shadowColor: colors.blue600
+  },
+  error: {
+    color: colors.danger300,
+    backgroundColor: "rgba(255,45,66,0.1)",
+    borderColor: "rgba(255,45,66,0.25)",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 14,
+    fontSize: 12,
+    lineHeight: 17
+  },
+  resultCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,214,155,0.34)",
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    padding: 20
+  },
+  resultIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,214,155,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14
+  },
+  resultTitle: {
+    color: colors.white,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  resultMessage: {
+    color: colors.blue200,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 7,
+    marginBottom: 18
+  },
+  tryAgainButton: {
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8
+  },
+  tryAgainText: {
+    color: colors.blue300,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "800"
   },
   backButton: {
     minHeight: 46,

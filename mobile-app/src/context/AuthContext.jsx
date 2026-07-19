@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { login, register, socialSignIn } from "../services/api";
+import { login, register } from "../services/api";
 import { clearSession, loadSession, saveSession } from "../services/storage";
 
 const AuthContext = createContext(null);
@@ -48,14 +48,6 @@ export function AuthProvider({ children }) {
     return register(payload);
   }
 
-  async function signInWithProvider(provider, profile) {
-    const response = await socialSignIn(provider, profile);
-    setSession(response.token);
-    setUser(response.user);
-    await saveSession({ token: response.token, user: response.user });
-    return response;
-  }
-
   async function signOut() {
     await clearSession();
     setSession(null);
@@ -84,7 +76,6 @@ export function AuthProvider({ children }) {
       isLoading,
       signIn,
       signUp,
-      signInWithProvider,
       signOut,
       updateUser
     }),

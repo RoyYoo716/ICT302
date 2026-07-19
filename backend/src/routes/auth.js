@@ -7,8 +7,12 @@ const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const { signAuthToken } = require('../services/tokenService');
 const { requireAuth } = require('../middleware/auth');
+const { isMobileApp } = require('../middleware/userAgent');
 
 const router = express.Router();
+
+const ADMIN_RESET_MOBILE_ONLY_ERROR =
+  'This account is registered as a mobile user. Please reset your password in the VAFPQR mobile app.';
 
 const SALT_ROUNDS = 10; // bcrypt work factor — higher = slower but safer
 
@@ -104,7 +108,7 @@ router.post('/login', async (req, res) => {
 
 // --- POST /api/auth/forgot-password ---
 // Creates a single-use, expiring reset token.
-// DEMO MODE: returns the reset link directly in the response (no email service).
+// Returns the reset link directly so both clients can continue in-app.
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -120,6 +124,10 @@ router.post('/forgot-password', async (req, res) => {
       return res.json({ message: 'If that email exists, a reset link has been created.' });
     }
 
+    if (!isMobileApp(req) && user.role !== 'admin') {
+      return res.status(403).json({ error: ADMIN_RESET_MOBILE_ONLY_ERROR });
+    }
+
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
@@ -128,9 +136,9 @@ router.post('/forgot-password', async (req, res) => {
       data: { resetToken, resetTokenExpiresAt },
     });
 
-    // DEMO: return the link. In production this would be emailed instead.
+    // Return the link for the web and mobile reset-password screens.
     res.json({
-      message: 'Reset link created (demo mode).',
+      message: 'Password reset link created.',
       resetLink: `/reset-password?token=${resetToken}`,
     });
   } catch (err) {
@@ -157,6 +165,10 @@ router.post('/reset-password', async (req, res) => {
 
     if (!user) {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    if (!isMobileApp(req) && user.role !== 'admin') {
+      return res.status(403).json({ error: ADMIN_RESET_MOBILE_ONLY_ERROR });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);

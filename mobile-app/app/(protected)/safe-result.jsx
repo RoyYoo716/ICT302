@@ -1,18 +1,16 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as Linking from "expo-linking";
 import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { GradientButton, OutlineButton } from "../../src/components/ui/GradientButton";
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
-import { saveScanHistoryRecord } from "../../src/services/scanHistory";
 
 export default function SafeResultRoute() {
   const params = useLocalSearchParams();
   const [linkError, setLinkError] = useState("");
-  const [savingScan, setSavingScan] = useState(false);
   const destinationUrl = stringParam(params.destinationUrl) || "";
   const domain = stringParam(params.domain) || "";
   const hasDestinationUrl = Boolean(destinationUrl);
@@ -35,28 +33,6 @@ export default function SafeResultRoute() {
       await Linking.openURL(safeUrl);
     } catch {
       setLinkError("Unable to open this destination URL.");
-    }
-  }
-
-  async function handleSaveScan() {
-    if (savingScan) return;
-
-    setSavingScan(true);
-
-    try {
-      await saveScanHistoryRecord({
-        id: stringParam(params.scanId),
-        destinationUrl,
-        domain,
-        status: "safe",
-        scannedValue: stringParam(params.scannedValue) || destinationUrl,
-        source: stringParam(params.source) || "result"
-      });
-      Alert.alert("Saved", "Scan saved successfully.");
-    } catch {
-      Alert.alert("Save Failed", "Unable to save scan right now.");
-    } finally {
-      setSavingScan(false);
     }
   }
 
@@ -85,11 +61,11 @@ export default function SafeResultRoute() {
         <View style={styles.safeCircle}>
           <Feather name="check" size={48} color={colors.green500} />
         </View>
-        <Text style={styles.pill}>SAFE QR CODE</Text>
+        <Text style={styles.pill}>VERIFIED QR CODE</Text>
         <Text style={styles.title}>Verification Passed</Text>
         <Text style={styles.description}>
-          This QR code has been verified safe. No threats, phishing attempts, or
-          malware detected.
+          The server verified this QR code's signature and confirmed that it is
+          not expired, blacklisted, or flagged as suspicious.
         </Text>
 
         <View style={styles.destinationCard}>
@@ -113,16 +89,10 @@ export default function SafeResultRoute() {
         />
         {linkError ? <Text style={styles.errorText}>{linkError}</Text> : null}
         <OutlineButton
-          label="Save Scan"
-          icon="bookmark"
-          onPress={handleSaveScan}
-          style={styles.saveButton}
-        />
-        <OutlineButton
           label="Report Tampering"
           icon="flag"
           onPress={goToReport}
-          style={styles.saveButton}
+          style={styles.reportButton}
         />
 
         <Pressable onPress={() => router.replace("/(protected)/dashboard")}>
@@ -151,11 +121,11 @@ function getAllowedWebUrl(value) {
   }
 }
 
-function SecurityItem({ icon, text, green = false }) {
+function SecurityItem({ icon, text }) {
   return (
     <View style={styles.securityItem}>
-      <Feather name={icon} size={12} color={green ? colors.green500 : colors.blue300} />
-      <Text style={[styles.securityText, green ? styles.securityGreen : null]}>{text}</Text>
+      <Feather name={icon} size={12} color={colors.blue300} />
+      <Text style={styles.securityText}>{text}</Text>
     </View>
   );
 }
@@ -269,9 +239,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 14
   },
-  securityGreen: {
-    color: colors.green500
-  },
   openButton: {
     marginBottom: 11
   },
@@ -284,7 +251,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 12
   },
-  saveButton: {
+  reportButton: {
     width: "100%",
     marginBottom: 22
   },

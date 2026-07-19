@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { FormField } from "../../src/components/ui/FormField";
 import { GradientButton } from "../../src/components/ui/GradientButton";
@@ -14,7 +13,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginRoute() {
   const { signIn } = useAuth();
-  const { registered } = useLocalSearchParams()
+  const { registered, passwordReset } = useLocalSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -47,8 +46,8 @@ export default function LoginRoute() {
     try {
       await signIn({ email, password });
       router.replace("/(protected)/dashboard");
-    } catch {
-      setError("Unable to sign in. Please try again.");
+    } catch (apiError) {
+      setError(apiError.message || "Unable to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -104,36 +103,19 @@ export default function LoginRoute() {
         </Text>
       )}
 
+      {passwordReset === "1" && (
+        <Text style={{ color: colors.green500 ?? "#22c55e", marginBottom: 12 }}>
+          Password reset successfully. Please sign in.
+        </Text>
+      )}
+
       <GradientButton
-        label="Sign In Securely"
+        label="Sign In"
         onPress={handleSignIn}
         loading={loading}
         variant="blue"
         style={styles.signInButton}
       />
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or continue with</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <View style={styles.socialRow}>
-        <Pressable
-          style={styles.socialButton}
-          onPress={() => router.push("/(public)/google-sign-up")}
-        >
-          <FontAwesome name="google" size={16} color="#EA4335" />
-          <Text style={styles.socialText}>Google</Text>
-        </Pressable>
-        <Pressable
-          style={styles.socialButton}
-          onPress={() => router.push("/(public)/apple-sign-up")}
-        >
-          <FontAwesome name="apple" size={18} color={colors.white} />
-          <Text style={styles.socialText}>Apple</Text>
-        </Pressable>
-      </View>
 
       <View style={styles.bottomSpacer} />
       <Text style={styles.bottomText}>
@@ -210,45 +192,6 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     shadowColor: colors.blue600
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginVertical: 18
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(82,139,220,0.22)"
-  },
-  dividerText: {
-    color: colors.textSubtle,
-    fontSize: 11,
-    lineHeight: 16,
-    fontFamily: "monospace"
-  },
-  socialRow: {
-    flexDirection: "row",
-    gap: 10
-  },
-  socialButton: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8
-  },
-  socialText: {
-    color: colors.white,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "800"
   },
   bottomSpacer: {
     flex: 1,

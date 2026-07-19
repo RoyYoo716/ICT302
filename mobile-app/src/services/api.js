@@ -1,4 +1,4 @@
-import { loadSession, clearSession } from "./storage";
+import { clearSession, loadSession } from "./storage";
 import { loadLocalAvatarUri } from "./avatarStorage";
 import { File } from "expo-file-system";
 // ---- Real backend plumbing ---------------------------------------
@@ -41,24 +41,6 @@ async function request(path, { method = "GET", body, headers } = {}) {
   return data;
 }
 
-
-import {
-  mockNotificationPreferences,
-  mockSafeResult,
-  mockUser,
-  mockWarningResult
-} from "../data/mockData";
-
-const MOCK_DELAY_MS = 350;
-let mutableUserProfile = { ...mockUser };
-let mutableNotificationPreferences = { ...mockNotificationPreferences };
-
-function wait(ms = MOCK_DELAY_MS) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 export async function login(credentials) {
   return request("/auth/login", {
     method: "POST",
@@ -83,22 +65,18 @@ export async function register(payload) {
   return user;
 }
 
-export async function socialSignIn(provider, profile) {
-  await wait();
+export async function requestPasswordReset(email) {
+  return request("/auth/forgot-password", {
+    method: "POST",
+    body: { email: (email || "").trim().toLowerCase() }
+  });
+}
 
-  const normalizedProvider = provider === "apple" ? "apple" : "google";
-
-  mutableUserProfile = {
-    ...mutableUserProfile,
-    name: profile?.name?.trim() || mutableUserProfile.name,
-    email: profile?.email?.trim() || mutableUserProfile.email,
-    authProvider: normalizedProvider
-  };
-
-  return {
-    token: `mock-${normalizedProvider}-session-token`,
-    user: { ...mutableUserProfile }
-  };
+export async function resetPassword({ token, newPassword }) {
+  return request("/auth/reset-password", {
+    method: "POST",
+    body: { token, newPassword }
+  });
 }
 
 export async function verifyQRCode(payload) {
@@ -189,23 +167,6 @@ export async function changePassword(currentPassword, newPassword) {
     method: "PATCH",
     body: { currentPassword, newPassword }
   });
-}
-
-export async function getNotificationPreferences() {
-  await wait();
-
-  return { ...mutableNotificationPreferences };
-}
-
-export async function updateNotificationPreferences(preferences) {
-  await wait(120);
-
-  mutableNotificationPreferences = {
-    ...mutableNotificationPreferences,
-    ...preferences
-  };
-
-  return { ...mutableNotificationPreferences };
 }
 
 function getDomain(value) {

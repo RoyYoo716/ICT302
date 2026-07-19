@@ -17,7 +17,6 @@ const sections = [
       {
         icon: "user",
         title: "Account Information",
-        subtitle: "alex@example.com",
         route: "/(protected)/account-information"
       },
       {
@@ -215,18 +214,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: "700",
     marginTop: 2
-  },
-  plan: {
-    alignSelf: "flex-start",
-    color: colors.blue200,
-    backgroundColor: "rgba(77,152,255,0.22)",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: "800",
-    marginTop: 4
   },
   section: {
     marginBottom: 22

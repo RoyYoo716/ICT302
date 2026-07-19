@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Constants from "expo-constants";
 import { colors } from "../src/constants/colors";
 import { typography } from "../src/constants/typography";
 import { SecureLogo } from "../src/components/ui/SecureLogo";
@@ -10,6 +11,7 @@ import { useAuth } from "../src/context/AuthContext";
 export default function SplashRoute() {
   const { session, isLoading } = useAuth();
   const [progress, setProgress] = useState(0);
+  const appVersion = Constants.expoConfig?.version ?? "0.1.0";
 
   useEffect(() => {
     if (isLoading) return undefined;
@@ -57,7 +59,7 @@ export default function SplashRoute() {
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
         <Text style={styles.version}>
-          v2.4.1 - Protected by end-to-end encryption
+          v{appVersion} - Server-side QR verification
         </Text>
       </View>
     </AppScreen>

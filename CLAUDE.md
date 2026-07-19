@@ -12,7 +12,7 @@ A Secure QR Code Management System that detects and responds to **physical QR co
 | Landing page (`landing-web`) | ✅ Integrated & deployed (`/landing`) |
 | Admin dashboard (`admin-web`) — all 5 pages + auth pages on real API | ✅ Complete & deployed (SPA at `/`) |
 | Render deployment | ✅ Live: `https://ict302-b77o.onrender.com` |
-| Mobile app (`mobile-app`, Expo) | 🔄 In progress — Step 1 (auth) committed; Steps 2–3 delivered in session (verify committed); Steps 4–7 remaining |
+| Mobile app (`mobile-app`, Expo) | 🔄 In progress — Steps 1–6 implemented; Step 7 release preparation remaining |
 | Sprint 5 system testing (Vanessa, 18–31 July) | 🔄 In progress |
 
 **⏰ Hard deadline: client demo 22 July 2026. Final submission 1 August 2026.**
@@ -153,11 +153,11 @@ Schema decisions (documented with rationale — do not revisit):
 | Step | Scope | Status |
 |---|---|---|
 | 1 | Plumbing + Auth (login / register / secure-store session) | ✅ committed (`mobile login, register done`) |
-| 2 | `verifyQRCode` real + result screens (5 statuses) | 🔄 code delivered 19 July — **verify it's applied & pushed** |
-| 3 | Tamper report multipart submission | 🔄 code delivered 19 July — E2E verification pending |
-| 4 | Scan history via AsyncStorage | ⬜ 20 July |
-| 5 | Profile / password screens | ⬜ |
-| 6 | Mass mock cleanup (demo-critical mock UI removal) | ⬜ 20 July |
+| 2 | `verifyQRCode` real + result screens (5 statuses) | ✅ Complete |
+| 3 | Tamper report multipart submission | ✅ Complete — mobile E2E verified |
+| 4 | Local scan history via `expo-file-system` | ✅ Complete |
+| 5 | Profile / password / local avatar | ✅ Complete |
+| 6 | Mass mock cleanup + mobile password reset | ✅ Complete |
 | 7 | EAS preview APK build → GitHub Releases → set `APK_DOWNLOAD_URL` on Render → full E2E rehearsal | ⬜ 21 July |
 
 Hard rules learned during Steps 1–3:
@@ -167,7 +167,8 @@ Hard rules learned during Steps 1–3:
 - Multipart tamper report: use plain `fetch` and **do not set a `Content-Type` header** — multer needs the auto-generated boundary.
 - The register flow **redirects to login with a success banner** (no auto-login). Field name is `fullName` everywhere (a `name` vs `fullName` mismatch caused silent failures — and never write `catch {}` without the error parameter).
 - UI: `KeyboardAvoidingView` on form screens; bottom navigator padded with `useSafeAreaInsets()` (Android gesture bar overlap).
-- **Do not delete `mock` data blocks in `api.js` until their consumer functions are replaced** (Step 6 does the mass cleanup).
+- Step 6 removed the mobile mock data, fake social sign-in, scan fallback, and unsupported security claims after their consumers were replaced.
+- Password reset is channel-aware: admin-web can create and consume reset links only for `admin` accounts; regular `user` accounts are directed to the mobile app. The backend enforces the role check on both forgot-password and reset-password requests.
 - A lazy `expireStaleQrCodes()` sweep for admin read endpoints was designed in-session — **not yet in the repo; verify before relying on auto-expiry in the demo**.
 
 ## Render Deployment
@@ -187,12 +188,11 @@ Mobile: `EXPO_PUBLIC_API_BASE_URL` = `https://ict302-b77o.onrender.com`.
 
 ## Remaining Work (in order, as of 20 July)
 
-1. **Mobile Step 4 + Step 6** (today): AsyncStorage scan history; remove demo-critical mock UI. Confirm Steps 2–3 code is committed and Step 3 E2E passes.
-2. **21 July**: EAS preview standalone APK → GitHub Releases → `APK_DOWNLOAD_URL` on Render → full E2E rehearsal.
-3. **22 July**: client demo (pre-warm via `/api/health`).
-4. **Repo hygiene**: restore the corrupted root `package.json` (see Repository Structure warning); decide fate of `landing-page-version-2`; commit/land `expireStaleQrCodes()` if adopted.
-5. **Sprint 5 support (through 31 July)**: assist Vanessa's system testing; bug fixes.
-6. **Docs**: User Manual, Installation/Deployment Guide, Final Project Report; amend PMP WBS 5.1.2 ("Continue to destination" button) to match the app-required decision.
+1. **Mobile Step 7**: EAS preview standalone APK → GitHub Releases → set `APK_DOWNLOAD_URL` on Render → full E2E rehearsal.
+2. **22 July**: client demo (pre-warm via `/api/health`).
+3. **Repo hygiene**: restore the corrupted root `package.json` (see Repository Structure warning); decide fate of `landing-page-version-2`; commit/land `expireStaleQrCodes()` if adopted.
+4. **Sprint 5 support (through 31 July)**: assist Vanessa's system testing; bug fixes.
+5. **Docs**: User Manual, Installation/Deployment Guide, Final Project Report; amend PMP WBS 5.1.2 ("Continue to destination" button) to match the app-required decision.
 
 ## Security & Quality Requirements
 

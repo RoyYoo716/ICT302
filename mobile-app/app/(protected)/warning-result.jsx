@@ -3,10 +3,9 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
-import { GradientButton, OutlineButton } from "../../src/components/ui/GradientButton";
+import { OutlineButton } from "../../src/components/ui/GradientButton";
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
-import { mockWarningResult } from "../../src/data/mockData";
 
 export default function WarningResultRoute() {
   const params = useLocalSearchParams();
@@ -43,8 +42,8 @@ export default function WarningResultRoute() {
         <View style={styles.warningCircle}>
           <Feather name="alert-triangle" size={48} color={colors.danger300} />
         </View>
-        <Text style={styles.pill}>THREAT DETECTED</Text>
-        <Text style={styles.title}>Potentially Unsafe QR Code</Text>
+        <Text style={styles.pill}>VERIFICATION WARNING</Text>
+        <Text style={styles.title}>QR Code Not Verified</Text>
         <Text style={styles.description}>
           {statusMessages[result.status] ?? result.reason}
         </Text>
@@ -85,23 +84,6 @@ function buildWarningResult(params) {
 
 function stringParam(value, fallback) {
   return typeof value === "string" && value.length > 0 ? value : fallback;
-}
-
-function numberParam(value, fallback) {
-  if (typeof value !== "string" || value.length === 0) return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function parseReasons(value) {
-  if (typeof value !== "string") return null;
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 function ThreatRow({ label, value }) {

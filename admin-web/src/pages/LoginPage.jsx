@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import AuthLayout from '../components/auth/AuthLayout.jsx'
 import AuthTabs from '../components/auth/AuthTabs.jsx'
 import RegisterForm from '../components/auth/RegisterForm.jsx'
@@ -8,9 +8,14 @@ import { loginAdmin, registerAdmin } from '../services/api.js'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('signin')
   const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState(
+    searchParams.get('passwordReset') === '1'
+      ? 'Password reset successfully. Please sign in.'
+      : '',
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function changeTab(nextTab) {

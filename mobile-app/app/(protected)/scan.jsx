@@ -71,7 +71,7 @@ export default function ScanRoute() {
     };
   }, [refreshCameraPermission]);
 
-  function startAnalysis(value, source, mockFallback = false) {
+  function startAnalysis(value, source) {
     if (scanLockedRef.current) return;
     scanLockedRef.current = true;
     setIsScanned(true);
@@ -79,8 +79,7 @@ export default function ScanRoute() {
       pathname: "/(protected)/analyzing",
       params: {
         value,
-        source,
-        mockFallback: mockFallback ? "true" : "false"
+        source
       }
     });
   }

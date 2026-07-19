@@ -347,6 +347,132 @@ a.auth-text-button {
   color: var(--color-primary-hover);
 }
 
+.password-auth-card {
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 18px;
+}
+
+.password-auth-form {
+  padding: 30px 32px 28px;
+}
+
+.password-auth-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.password-auth-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 15px;
+  border: 1px solid rgba(26, 86, 219, 0.15);
+  border-radius: 17px;
+  background: rgba(26, 86, 219, 0.09);
+  color: var(--color-primary);
+  display: grid;
+  place-items: center;
+}
+
+.password-auth-icon svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.password-auth-header h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.password-auth-header p {
+  max-width: 300px;
+  margin: 8px auto 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.password-auth-fields .auth-message {
+  margin-top: 0;
+}
+
+.password-result-card {
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-radius: 14px;
+  background: rgba(5, 150, 105, 0.055);
+  padding: 22px 20px 16px;
+  text-align: center;
+}
+
+.password-result-icon {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 13px;
+  border-radius: 50%;
+  background: rgba(5, 150, 105, 0.13);
+  color: var(--color-success);
+  display: grid;
+  place-items: center;
+}
+
+.password-result-icon svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.password-result-card h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.password-result-card > p {
+  margin: 7px 0 18px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.password-result-card .auth-text-button {
+  margin-top: 13px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.password-alert-card {
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  border-radius: 12px;
+  background: rgba(220, 38, 38, 0.06);
+  padding: 14px 16px;
+  color: var(--color-error);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.password-alert-card strong {
+  font-weight: 800;
+}
+
+.password-auth-back {
+  margin-top: 18px;
+}
+
 @media (max-width: 560px) {
   .auth-page {
     padding: 38px 16px 28px;
@@ -363,5 +489,9 @@ a.auth-text-button {
 
   .register-form {
     padding-top: 24px;
+  }
+
+  .password-auth-form {
+    padding: 26px 20px 24px;
   }
 }
