@@ -8,7 +8,7 @@ import { BottomNav } from "../../src/components/layout/BottomNav";
 import { colors } from "../../src/constants/colors";
 import { spacing } from "../../src/constants/spacing";
 import { typography } from "../../src/constants/typography";
-import { deleteScanHistoryRecord, getScanHistory } from "../../src/services/scanHistory";
+import { getScanHistory } from "../../src/services/api";
 import { formatScanTime, truncateMiddle } from "../../src/utils/formatters";
 
 const filters = [
@@ -27,8 +27,8 @@ export default function HistoryRoute() {
       let mounted = true;
 
       async function loadHistory() {
-        const scans = await getScanHistory();
-        if (mounted) setHistory(scans);
+        const scans = await getScanHistory({ limit: 100 });
+        if (mounted) setHistory(scans.history);
       }
 
       loadHistory();
@@ -59,28 +59,6 @@ export default function HistoryRoute() {
 
     await Clipboard.setStringAsync(value);
     Alert.alert("Copied", "Copied to clipboard.");
-  }
-
-  function handleDelete(item) {
-    Alert.alert("Delete this scan history?", "", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const previousHistory = history;
-          setHistory((current) => current.filter((record) => record.id !== item.id));
-
-          try {
-            await deleteScanHistoryRecord(item.id);
-            Alert.alert("Deleted", "Scan history deleted.");
-          } catch {
-            setHistory(previousHistory);
-            Alert.alert("Delete Failed", "Unable to delete scan history right now.");
-          }
-        }
-      }
-    ]);
   }
 
   return (
@@ -127,7 +105,6 @@ export default function HistoryRoute() {
               key={item.id}
               item={item}
               onCopy={() => handleCopy(item)}
-              onDelete={() => handleDelete(item)}
             />
           ))}
           {filteredHistory.length === 0 ? (
@@ -140,7 +117,7 @@ export default function HistoryRoute() {
   );
 }
 
-function HistoryCard({ item, onCopy, onDelete }) {
+function HistoryCard({ item, onCopy }) {
   const isSafe = item.status === "safe";
 
   return (
@@ -155,21 +132,22 @@ function HistoryCard({ item, onCopy, onDelete }) {
             {isSafe ? "SAFE" : "BLOCKED"}
           </Text>
         </View>
-        <Text style={styles.url}>{truncateMiddle(item.url, 34)}</Text>
+        <Text style={styles.url}>
+          {item.url ? truncateMiddle(item.url, 34) : item.verificationStatus.toUpperCase()}
+        </Text>
         <View style={styles.divider} />
         <View style={styles.cardBottom}>
           <View style={styles.timeRow}>
             <Feather name="clock" size={12} color={colors.textSubtle} />
             <Text style={styles.time}>{formatScanTime(item.scannedAt)}</Text>
           </View>
-          <View style={styles.actions}>
-            <Pressable style={styles.actionButton} onPress={onCopy}>
-              <Feather name="copy" size={14} color={colors.blue300} />
-            </Pressable>
-            <Pressable style={[styles.actionButton, styles.deleteAction]} onPress={onDelete}>
-              <Feather name="trash-2" size={14} color={colors.danger300} />
-            </Pressable>
-          </View>
+          {item.url ? (
+            <View style={styles.actions}>
+              <Pressable style={styles.actionButton} onPress={onCopy}>
+                <Feather name="copy" size={14} color={colors.blue300} />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
@@ -362,9 +340,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(77,152,255,0.14)"
-  },
-  deleteAction: {
-    backgroundColor: "rgba(255,93,103,0.15)"
   },
   empty: {
     ...typography.bodySmall,

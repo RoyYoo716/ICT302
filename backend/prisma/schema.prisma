@@ -9,6 +9,7 @@ datasource db {
 model Alert {
   id           String   @id @default(uuid()) 
   qrCodeId     String
+  reportedById String?
   reporterName String?
   contactInfo  String?
   gpsLat       Float?
@@ -18,6 +19,9 @@ model Alert {
   status       String   @default("new")    
   createdAt    DateTime @default(now())
   QrCode       QrCode   @relation(fields: [qrCodeId], references: [id])
+  reportedBy   User?    @relation("ReportedAlerts", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  @@index([reportedById, createdAt])
 }
 
 model QrCode {
@@ -37,6 +41,7 @@ model QrCode {
 model ScanLog {
   id        String   @id @default(uuid()) 
   qrCodeId  String?
+  userId    String?
   scannedAt DateTime @default(now())
   ipAddress String?
   userAgent String?
@@ -44,6 +49,9 @@ model ScanLog {
   gpsLng    Float?
   result    String
   QrCode    QrCode?  @relation(fields: [qrCodeId], references: [id])
+  user      User?    @relation("UserScanLogs", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, scannedAt])
 }
 
 model User {
@@ -53,11 +61,14 @@ model User {
   fullName            String?
   phoneNumber         String?
   role                String    @default("user")
+  authVersion         Int       @default(0)
   resetToken          String?
   resetTokenExpiresAt DateTime?
   lastLogin           DateTime?
   createdAt           DateTime  @default(now())
   QrCode              QrCode[]
+  ScanLog             ScanLog[] @relation("UserScanLogs")
+  reportedAlerts      Alert[]   @relation("ReportedAlerts")
 }
 
 model ActivityLog {

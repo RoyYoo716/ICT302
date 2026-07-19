@@ -2,6 +2,7 @@
 // Signs a QR token, stores the record, and renders the QR PNG.
 
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const { signQrToken } = require('./tokenService');
 
@@ -15,45 +16,38 @@ function buildVerifyUrl(token) {
 // Create a new QR code: sign token -> save record -> render PNG.
 // options: { destinationUrl, label, expiryHours }
 async function createQrCode({ destinationUrl, label, expiryHours, createdById }) {
-  // 1. Create the DB record first so we have a stable qrCodeId.
-  //    Token is filled in a moment later (we need the record id in the token).
+  // Generate the id first so the record can be created atomically with its
+  // final token. A shared temporary token would collide under concurrency.
+  const qrCodeId = crypto.randomUUID();
+  const expiresIn = `${expiryHours}h`;
+  const token = signQrToken(
+    { qrCodeId, destinationUrl },
+    expiresIn
+  );
+
   const record = await prisma.qrCode.create({
     data: {
-      token: 'pending', // temporary placeholder, replaced below
+      id: qrCodeId,
+      token,
       label: label || null,
       destinationUrl,
       status: 'active',
-      expiresAt: expiryHours
-        ? new Date(Date.now() + expiryHours * 60 * 60 * 1000)
-        : null,
+      expiresAt: new Date(Date.now() + expiryHours * 60 * 60 * 1000),
       createdById: createdById || null,
     },
   });
 
-  // 2. Sign a QR token carrying the record id and destination.
-  const expiresIn = expiryHours ? `${expiryHours}h` : '365d';
-  const token = signQrToken(
-    { qrCodeId: record.id, destinationUrl },
-    expiresIn
-  );
-
-  // 3. Save the real token back onto the record.
-  const updated = await prisma.qrCode.update({
-    where: { id: record.id },
-    data: { token },
-  });
-
-  // 4. Render the verify URL into a base64 PNG data URL.
+  // Render the verify URL into a base64 PNG data URL.
   const verifyUrl = buildVerifyUrl(token);
   const qrImage = await QRCode.toDataURL(verifyUrl);
 
   return {
-    id: updated.id,
-    label: updated.label,
-    destinationUrl: updated.destinationUrl,
-    status: updated.status,
-    expiresAt: updated.expiresAt,
-    createdById: updated.createdById,
+    id: record.id,
+    label: record.label,
+    destinationUrl: record.destinationUrl,
+    status: record.status,
+    expiresAt: record.expiresAt,
+    createdById: record.createdById,
     verifyUrl,
     qrImage, // base64 PNG data URL, ready to display or download
   };

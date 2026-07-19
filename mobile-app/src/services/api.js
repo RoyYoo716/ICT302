@@ -6,11 +6,25 @@ import { File } from "expo-file-system";
 // local backend, swap BASE_URL to "http://<your-PC-LAN-IP>:3000".
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
-// Identifies us as the dedicated app — the server branches on this
-// User-Agent to return JSON instead of the landing page.
+// Identifies the client for telemetry and channel-aware password reset.
+// Authorization, not User-Agent, protects mobile-only QR responses.
 const APP_USER_AGENT = "SecureQRApp/1.0";
+let sessionExpiredHandler = null;
+
+export function setSessionExpiredHandler(handler) {
+  sessionExpiredHandler = typeof handler === "function" ? handler : null;
+  return () => {
+    if (sessionExpiredHandler === handler) sessionExpiredHandler = null;
+  };
+}
+
+async function expireLocalSession() {
+  await clearSession();
+  sessionExpiredHandler?.();
+}
 
 async function request(path, { method = "GET", body, headers } = {}) {
+  assertApiConfigured();
   const session = await loadSession();
   const token = session?.token || null;
 
@@ -30,7 +44,7 @@ async function request(path, { method = "GET", body, headers } = {}) {
   // Same rule as the web: a 401 only means "session expired"
   // if we actually sent a token.
   if (response.status === 401 && token) {
-    await clearSession();
+    await expireLocalSession();
     throw new Error("Session expired. Please sign in again.");
   }
 
@@ -79,24 +93,20 @@ export async function resetPassword({ token, newPassword }) {
   });
 }
 
+export async function getCurrentUser() {
+  return request("/auth/me");
+}
+
 export async function verifyQRCode(payload) {
   const value = payload?.value || "";
 
   // Extract the token from the scanned URL. Any QR without a token
   // param is not one of ours — the backend has nothing to verify.
   const match = value.match(/[?&]token=([^&\s]+)/);
-  if (!match) {
-    return {
-      status: "invalid",
-      reason: "Not a secure QR code issued by this system.",
-      destinationUrl: null,
-      domain: null,
-      qrId: null,
-      label: null,
-    };
-  }
-
-  const result = await request(`/qr/verify?token=${encodeURIComponent(match[1])}`);
+  const result = await request("/qr/verify/mobile", {
+    method: "POST",
+    body: { token: match ? decodeToken(match[1]) : "" },
+  });
 
   // Adapt the backend contract to what the screens need.
   const destinationUrl = result.destinationUrl || result.qr?.destinationUrl || null;
@@ -110,12 +120,36 @@ export async function verifyQRCode(payload) {
   };
 }
 
+export async function getScanHistory({ page = 1, limit = 100 } = {}) {
+  const response = await request(`/scans/history?page=${page}&limit=${limit}`);
+  return {
+    history: response.data.map((scan) => {
+      const destinationUrl = scan.destinationUrl || "";
+      return {
+        id: scan.id,
+        qrCodeId: scan.qrCodeId,
+        label: scan.label,
+        domain: getDomain(destinationUrl) || scan.label || "Unknown destination",
+        url: destinationUrl,
+        status: scan.result === "valid" ? "safe" : "blocked",
+        verificationStatus: scan.result,
+        scannedAt: scan.scannedAt,
+        source: "server",
+      };
+    }),
+    summary: response.summary,
+    pagination: response.pagination,
+  };
+}
+
 
 export async function submitTamperReport(report) {
+  assertApiConfigured();
+  const session = await loadSession();
+  const token = session?.token || null;
   const form = new FormData();
   form.append("qrCodeId", report.qrCodeId);
   if (report.description) form.append("description", report.description);
-  if (report.reporterName) form.append("reporterName", report.reporterName);
   if (report.contactInfo) form.append("contactInfo", report.contactInfo);
   if (report.location) {
     form.append("gpsLat", String(report.location.latitude));
@@ -133,11 +167,18 @@ export async function submitTamperReport(report) {
   // boundary itself. Setting it manually breaks multer parsing.
   const response = await fetch(`${BASE_URL}/api/alert/report`, {
     method: "POST",
-    headers: { "User-Agent": APP_USER_AGENT },
+    headers: {
+      "User-Agent": APP_USER_AGENT,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: form,
   });
 
   const data = await response.json().catch(() => null);
+  if (response.status === 401 && token) {
+    await expireLocalSession();
+    throw new Error("Session expired. Please sign in again.");
+  }
   if (!response.ok) {
     throw new Error(data?.error || `Report failed (${response.status})`);
   }
@@ -176,5 +217,19 @@ function getDomain(value) {
     return new URL(value).hostname.replace(/^www\./, "");
   } catch {
     return "";
+  }
+}
+
+function decodeToken(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return "";
+  }
+}
+
+function assertApiConfigured() {
+  if (!BASE_URL) {
+    throw new Error("The app API address is not configured.");
   }
 }

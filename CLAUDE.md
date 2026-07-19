@@ -28,16 +28,15 @@ QR codes encode **plain HTTPS URLs only**. All security logic (JWT validation, e
 [QR Code] → encodes → https://ict302-b77o.onrender.com/api/qr/verify?token=<QR-JWT>
                                     │
                      verify sig → expiry → blacklist → log scan (ALWAYS)
-                                    │
-                        User-Agent detection branch
-                       ┌────────────┴─────────────┐
-              SecureQRApp/1.0                Regular browser
-              (mobile app)                   (Apple/Google scanner)
-                       │                           │
-              JSON verify result           302 → /landing/?valid=&reason=&apk=
-              → in-app result screen       → Landing Page reads query params
-              → destination reachable      → verify result (green/red)
-              → tamper report flow         → app download CTA · NO destination access
+                      ┌─────────────┴─────────────┐
+                      │                           │
+     Authenticated mobile POST              Public browser GET
+       /api/qr/verify/mobile                 /api/qr/verify?token=
+                      │                           │
+       user-linked ScanLog + JSON           302 → /landing/?valid=&reason=&apk=
+       → in-app result screen               → verification result + app CTA
+       → destination reachable              → NO destination access
+       → authenticated report flow
 ```
 
 Express serves everything from one Render service: API under `/api`, Landing Page (static build) under `/landing`, and the admin SPA at `/` with an Express-5-compatible SPA fallback (middleware pattern, **not** `app.get('*')`) so react-router deep links survive refresh.
@@ -85,7 +84,7 @@ Branches: `main` (Render deploy branch), `mobile-integration` (active mobile wor
 |---|---|---|
 | Purpose | lives inside printed QR codes (public) | login sessions (app + web) |
 | Secret | `QR_JWT_SECRET` | `AUTH_JWT_SECRET` |
-| Payload | qrCodeId, destinationUrl, exp | userId, role, exp |
+| Payload | qrCodeId, destinationUrl, exp | userId, authVersion, exp |
 
 Rules (all implemented):
 - **Registration is one single form**: fullName (required — the field is `fullName`, never `name`), email (required), phoneNumber (optional), password (required). **No role field — every new account is role `user`.** Email format is validated on both frontend and backend, and emails are **lowercase-normalized** before storage/lookup.
@@ -96,15 +95,16 @@ Rules (all implemented):
 - Forgot/Reset password: single-use expiring reset token on the User row; **demo mode returns the reset link in the API response** (no email service).
 - Password change (`PATCH /api/auth/password`): wrong current password returns **HTTP 400, not 401** — a 401 would trigger the session-expiry redirect. Same-password reuse is rejected.
 - Frontend 401 handler must check **`&& token`**: 401 with a stored token = session expired (redirect); 401 without = bad credentials (show error inline).
-- `GET /api/qr/verify` stays **public forever**. Never put auth middleware on it.
+- `GET /api/qr/verify` stays **public forever** for standard camera/browser scans. The mobile app uses authenticated `POST /api/qr/verify/mobile`; never use User-Agent as authorization.
+- Auth middleware reloads the current user and `authVersion` from the database. Password changes, password resets, and role changes increment `authVersion`, invalidating every prior JWT for that account.
 - Custom auth (`public.User`, jsonwebtoken + bcrypt) — entirely separate from Supabase Auth. Do not migrate.
 
 ## Database Schema (5 tables — live in Supabase; see `schema-reconciliation.md`)
 
 - **QrCode**: id, token, label, destinationUrl, status (`active`/`blacklisted`/`suspicious`/`expired`), expiresAt, **createdById? → User (optional, audit trail only)**, createdAt
-- **User**: id, email, passwordHash, fullName, phoneNumber?, role (`user`/`admin`), resetToken?, resetTokenExpiresAt?, **lastLogin?**, createdAt
-- **ScanLog**: id, **qrCodeId? (optional — tampered/unknown-token scans have no parent QR)**, scannedAt, ipAddress, userAgent, gpsLat, gpsLng, result
-- **Alert**: id, qrCodeId, reporterName?, contactInfo?, gpsLat, gpsLng, photoUrl, description, status (`new`/`resolved`), createdAt
+- **User**: id, email, passwordHash, fullName, phoneNumber?, role (`user`/`admin`), **authVersion**, resetToken?, resetTokenExpiresAt?, **lastLogin?**, createdAt
+- **ScanLog**: id, **qrCodeId? (optional — tampered/unknown-token scans have no parent QR)**, **userId? (authenticated mobile owner)**, scannedAt, ipAddress, userAgent, gpsLat, gpsLng, result
+- **Alert**: id, qrCodeId, **reportedById? → User**, reporterName?, contactInfo?, gpsLat, gpsLng, photoUrl, description, status (`new`/`resolved`), createdAt
 - **ActivityLog**: id, qrCodeId?, type, message, status?, createdAt — feeds Recent Activity. **Four event types: `status_changed`, `alert_created`, `alert_resolved`, `alert_reopened`.**
 
 Schema decisions (documented with rationale — do not revisit):
@@ -117,12 +117,14 @@ Schema decisions (documented with rationale — do not revisit):
 
 ### Public (no auth)
 - `GET /api/health` — liveness check; also used to **pre-warm Render before demos**
-- `GET /api/qr/verify?token=` — validate signature → expiry → blacklist → **log every attempt to ScanLog** → UA branch: `SecureQRApp/1.0` gets JSON; browsers get `302 → /landing/?valid=…&reason=…&apk=…` (the Landing Page makes **no API call** of its own — avoids double ScanLog)
-- `POST /api/alert/report` — multipart: photo (memoryStorage → Supabase Storage → URL), GPS, description, optional reporter fields → QR status → `suspicious` → ActivityLog `alert_created`
+- `GET /api/qr/verify?token=` — validate signature → expiry → blacklist → **log every attempt to ScanLog** → browser `302 → /landing/?valid=…&reason=…&apk=…` (the Landing Page makes **no API call** of its own — avoids double ScanLog)
 
 ### Auth (shared by app and web)
 - `POST /api/auth/register` · `POST /api/auth/login` (updates lastLogin) · `POST /api/auth/forgot-password` · `POST /api/auth/reset-password`
+- `GET /api/auth/me` (requireAuth; validates the saved JWT against the current DB account and role)
 - `PATCH /api/auth/profile` (requireAuth — Settings: name/phone) · `PATCH /api/auth/password` (requireAuth; 400 on wrong current password)
+- `POST /api/qr/verify/mobile` (requireAuth; links each app scan to the signed-in user) · `GET /api/scans/history` (requireAuth; server-backed, user-scoped history and summary)
+- `POST /api/alert/report` (requireAuth) → required photo + description, validated optional GPS, reporter identity from the signed-in account → QR `suspicious` → ActivityLog `alert_created`
 
 ### Admin (ALL behind requireAdmin)
 - `POST /api/qr/generate` — sign QR-JWT → record with label, status `active`, `createdById = req.user.userId` → base64 PNG of the verify URL
@@ -155,21 +157,23 @@ Schema decisions (documented with rationale — do not revisit):
 | 1 | Plumbing + Auth (login / register / secure-store session) | ✅ committed (`mobile login, register done`) |
 | 2 | `verifyQRCode` real + result screens (5 statuses) | ✅ Complete |
 | 3 | Tamper report multipart submission | ✅ Complete — mobile E2E verified |
-| 4 | Local scan history via `expo-file-system` | ✅ Complete |
+| 4 | Authenticated server-backed scan history | ✅ Complete |
 | 5 | Profile / password / local avatar | ✅ Complete |
 | 6 | Mass mock cleanup + mobile password reset | ✅ Complete |
 | 7 | EAS preview APK build → GitHub Releases → set `APK_DOWNLOAD_URL` on Render → full E2E rehearsal | ⬜ 21 July |
 
 Hard rules learned during Steps 1–3:
-- `BASE_URL` comes from `EXPO_PUBLIC_API_BASE_URL`; all requests send User-Agent `SecureQRApp/1.0`.
+- `BASE_URL` comes from `EXPO_PUBLIC_API_BASE_URL`; preview/production EAS profiles point to the live Render API. Requests send User-Agent `SecureQRApp/1.0` for telemetry/channel behavior only, never authorization.
 - Extract the token from the scanned URL with a **regex** — `URL.searchParams` is unimplemented in React Native's JSC and throws.
 - Map all five backend statuses (`valid` / `expired` / `invalid` / `blacklisted` / `suspicious`) to the safe/warning screens. No fabricated threat data (`sslValid`, fake report counts, `riskLevel`) — display only what the server returns.
 - Multipart tamper report: use plain `fetch` and **do not set a `Content-Type` header** — multer needs the auto-generated boundary.
 - The register flow **redirects to login with a success banner** (no auto-login). Field name is `fullName` everywhere (a `name` vs `fullName` mismatch caused silent failures — and never write `catch {}` without the error parameter).
 - UI: `KeyboardAvoidingView` on form screens; bottom navigator padded with `useSafeAreaInsets()` (Android gesture bar overlap).
 - Step 6 removed the mobile mock data, fake social sign-in, scan fallback, and unsupported security claims after their consumers were replaced.
+- Scan history is never stored as a second local source of truth. The backend writes `ScanLog.userId`; Dashboard and History read the signed-in user's server records, so reinstalling or changing devices does not lose the history.
+- Tamper reports require a signed-in account, evidence photo, and description. Reporter identity comes from the authenticated backend user rather than editable form data.
 - Password reset is channel-aware: admin-web can create and consume reset links only for `admin` accounts; regular `user` accounts are directed to the mobile app. The backend enforces the role check on both forgot-password and reset-password requests.
-- A lazy `expireStaleQrCodes()` sweep for admin read endpoints was designed in-session — **not yet in the repo; verify before relying on auto-expiry in the demo**.
+- Admin read endpoints run the implemented lazy `expireStaleQrCodes()` sweep before listing/exporting/aggregating QR records.
 
 ## Render Deployment
 
@@ -190,7 +194,7 @@ Mobile: `EXPO_PUBLIC_API_BASE_URL` = `https://ict302-b77o.onrender.com`.
 
 1. **Mobile Step 7**: EAS preview standalone APK → GitHub Releases → set `APK_DOWNLOAD_URL` on Render → full E2E rehearsal.
 2. **22 July**: client demo (pre-warm via `/api/health`).
-3. **Repo hygiene**: restore the corrupted root `package.json` (see Repository Structure warning); decide fate of `landing-page-version-2`; commit/land `expireStaleQrCodes()` if adopted.
+3. **Repo hygiene**: restore the corrupted root `package.json` (see Repository Structure warning); decide fate of `landing-page-version-2`.
 4. **Sprint 5 support (through 31 July)**: assist Vanessa's system testing; bug fixes.
 5. **Docs**: User Manual, Installation/Deployment Guide, Final Project Report; amend PMP WBS 5.1.2 ("Continue to destination" button) to match the app-required decision.
 

@@ -17,6 +17,7 @@ app.get('/api/health', (req, res) => {
 // Feature routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/qr', require('./routes/qr'));
+app.use('/api/scans', require('./routes/scan'));
 app.use('/api/alert', require('./routes/alert'));
 app.use('/api/admin', require('./routes/admin'));
 

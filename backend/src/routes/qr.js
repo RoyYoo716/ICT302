@@ -1,9 +1,9 @@
 // qr.js — QR code endpoints.
-// generate is admin-only; verify is PUBLIC forever (scanner users have no login).
+// Generation is admin-only. Browser verification stays public; the mobile
+// verification endpoint requires a signed-in app user.
 
 const express = require('express');
-const { requireAdmin } = require('../middleware/auth');
-const { isMobileApp } = require('../middleware/userAgent');
+const { requireAdmin, requireAuth } = require('../middleware/auth');
 const { createQrCode } = require('../services/qrService');
 const { verifyToken } = require('../services/verifyService');
 
@@ -13,13 +13,24 @@ const router = express.Router();
 router.post('/generate', requireAdmin, async (req, res) => {
   try {
     const { destinationUrl, label, expiryHours } = req.body;
-    if (!destinationUrl) {
-      return res.status(400).json({ error: 'destinationUrl is required' });
+    const normalizedUrl = normalizeHttpUrl(destinationUrl);
+    if (!normalizedUrl) {
+      return res.status(400).json({ error: 'A valid http:// or https:// destinationUrl is required' });
     }
+
+    const normalizedExpiryHours = Number(expiryHours);
+    if (
+      !Number.isInteger(normalizedExpiryHours) ||
+      normalizedExpiryHours < 1 ||
+      normalizedExpiryHours > 8760
+    ) {
+      return res.status(400).json({ error: 'expiryHours must be a whole number between 1 and 8760' });
+    }
+
     const qr = await createQrCode({
-      destinationUrl,
-      label,
-      expiryHours: expiryHours ? Number(expiryHours) : null,
+      destinationUrl: normalizedUrl,
+      label: typeof label === 'string' ? label.trim().slice(0, 120) : null,
+      expiryHours: normalizedExpiryHours,
       createdById: req.user.userId,
     });
     res.status(201).json(qr);
@@ -29,19 +40,27 @@ router.post('/generate', requireAdmin, async (req, res) => {
   }
 });
 
+// --- POST /api/qr/verify/mobile (authenticated app users only) ---
+// The public QR URL remains GET /verify for standard camera scanners. The
+// dedicated app extracts that URL's token and sends it here with auth.
+router.post('/verify/mobile', requireAuth, async (req, res) => {
+  try {
+    const token = typeof req.body?.token === 'string' ? req.body.token : '';
+    const result = await verifyToken(token, req, { userId: req.user.userId });
+    res.json(result);
+  } catch (err) {
+    console.error('Mobile QR verify error:', err);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
 // --- GET /api/qr/verify?token= (PUBLIC — never add auth here) ---
 router.get('/verify', async (req, res) => {
   try {
     const { token } = req.query;
     const result = await verifyToken(token, req);
 
-    // Branch on who is asking.
-    if (isMobileApp(req)) {
-      // Mobile app: return JSON for the in-app result screen.
-      return res.json(result);
-    }
-
-     // Browser: redirect to the Landing Page with the verify result.
+    // Browser: redirect to the Landing Page with the verify result.
     // Verification and scan logging already happened above — the landing
     // page only DISPLAYS the result (never re-verifies; avoids double logs).
     const params = new URLSearchParams();
@@ -56,5 +75,17 @@ router.get('/verify', async (req, res) => {
     res.status(500).send('Verification failed');
   }
 });
+
+function normalizeHttpUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  try {
+    const parsed = new URL(value.trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
 
 module.exports = router;

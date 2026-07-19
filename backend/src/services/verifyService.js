@@ -3,32 +3,28 @@
 // Returns a result object the route uses to branch on User-Agent.
 
 const prisma = require('../config/prisma');
-const { verifyQrToken } = require('./tokenService');
+const { verifyQrToken, verifyQrTokenIgnoringExpiration } = require('./tokenService');
 
 // Log every scan attempt, no matter the outcome.
 // A failed scan is evidence of tampering, so we never skip logging.
-async function logScan({ qrCodeId, req, result }) {
-  try {
-    await prisma.scanLog.create({
-      data: {
-        qrCodeId: qrCodeId || null,
-        ipAddress: req.ip || null,
-        userAgent: req.headers['user-agent'] || null,
-        result,
-      },
-    });
-  } catch (err) {
-    // Logging must never crash the verify flow.
-    console.error('Scan log error:', err.message);
-  }
+async function logScan({ qrCodeId, userId, req, result }) {
+  return prisma.scanLog.create({
+    data: {
+      qrCodeId: qrCodeId || null,
+      userId: userId || null,
+      ipAddress: req.ip || null,
+      userAgent: req.headers['user-agent'] || null,
+      result,
+    },
+  });
 }
 
 // Verify a token and return a structured result.
 // result.status: 'valid' | 'invalid' | 'expired' | 'blacklisted' | 'suspicious'
-async function verifyToken(token, req) {
+async function verifyToken(token, req, { userId = null } = {}) {
   // No token at all.
   if (!token) {
-    await logScan({ qrCodeId: null, req, result: 'invalid' });
+    await logScan({ qrCodeId: null, userId, req, result: 'invalid' });
     return { status: 'invalid', reason: 'No token provided' };
   }
 
@@ -37,32 +33,67 @@ async function verifyToken(token, req) {
   try {
     payload = verifyQrToken(token);
   } catch (err) {
-    // Distinguish expired from tampered for a clearer message.
     const result = err.name === 'TokenExpiredError' ? 'expired' : 'invalid';
-    await logScan({ qrCodeId: null, req, result });
-    return { status: result, reason: err.message };
+    let expiredQr = null;
+
+    if (result === 'expired') {
+      try {
+        const expiredPayload = verifyQrTokenIgnoringExpiration(token);
+        expiredQr = await prisma.qrCode.findUnique({ where: { id: expiredPayload.qrCodeId } });
+      } catch {
+        expiredQr = null;
+      }
+    }
+
+    await logScan({ qrCodeId: expiredQr?.id, userId, req, result });
+    return {
+      status: result,
+      reason: result === 'expired' ? 'This QR code has expired' : 'Invalid QR code signature',
+      qr: expiredQr ? publicQr(expiredQr) : null,
+    };
   }
 
   // 2. Look up the QR record.
   const qr = await prisma.qrCode.findUnique({ where: { id: payload.qrCodeId } });
   if (!qr) {
-    await logScan({ qrCodeId: null, req, result: 'invalid' });
+    await logScan({ qrCodeId: null, userId, req, result: 'invalid' });
     return { status: 'invalid', reason: 'QR code not found' };
   }
 
-  // 3. Blacklist / suspicious status check.
-  if (qr.status === 'blacklisted') {
-    await logScan({ qrCodeId: qr.id, req, result: 'blacklisted' });
-    return { status: 'blacklisted', qr, reason: 'This QR code has been blacklisted' };
-  }
-  if (qr.status === 'suspicious') {
-    await logScan({ qrCodeId: qr.id, req, result: 'suspicious' });
-    return { status: 'suspicious', qr, reason: 'This QR code is flagged as suspicious' };
+  if (qr.expiresAt && qr.expiresAt <= new Date()) {
+    const expiredQr = { ...qr, status: 'expired' };
+    if (qr.status === 'active') {
+      await prisma.qrCode.update({ where: { id: qr.id }, data: { status: 'expired' } });
+    }
+    await logScan({ qrCodeId: qr.id, userId, req, result: 'expired' });
+    return { status: 'expired', qr: publicQr(expiredQr), reason: 'This QR code has expired' };
   }
 
-  // 4. All good — valid scan.
-  await logScan({ qrCodeId: qr.id, req, result: 'valid' });
-  return { status: 'valid', qr, destinationUrl: qr.destinationUrl };
+  if (qr.status !== 'active') {
+    const knownStatus = ['blacklisted', 'suspicious', 'expired'].includes(qr.status)
+      ? qr.status
+      : 'invalid';
+    const reasons = {
+      blacklisted: 'This QR code has been blacklisted',
+      suspicious: 'This QR code is flagged as suspicious',
+      expired: 'This QR code has expired',
+      invalid: 'This QR code has an invalid status',
+    };
+    await logScan({ qrCodeId: qr.id, userId, req, result: knownStatus });
+    return { status: knownStatus, qr: publicQr(qr), reason: reasons[knownStatus] };
+  }
+
+  await logScan({ qrCodeId: qr.id, userId, req, result: 'valid' });
+  return { status: 'valid', qr: publicQr(qr), destinationUrl: qr.destinationUrl };
+}
+
+function publicQr(qr) {
+  return {
+    id: qr.id,
+    label: qr.label,
+    status: qr.status,
+    expiresAt: qr.expiresAt,
+  };
 }
 
 module.exports = { verifyToken };

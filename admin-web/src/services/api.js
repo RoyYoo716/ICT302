@@ -45,6 +45,12 @@ async function request(path, { method = 'GET', body, headers } = {}) {
     throw new Error('Session expired. Please sign in again.')
   }
 
+  if (response.status === 403 && token && data?.error === 'Admin access required') {
+    removeStorage(SESSION_KEY)
+    window.location.assign('/login')
+    throw new Error('Your admin access has changed. Please sign in again.')
+  }
+
   if (!response.ok) {
     throw new Error(data?.error || `Request failed (${response.status})`)
   }
@@ -570,15 +576,18 @@ export async function logoutAdmin() {
   return { success: true }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// GET /api/auth/me
-// Payload: none
-// Expected response: admin profile or null
-// Purpose: return the current authenticated admin profile.
-// Session restore: read the user saved at login. No server round-trip.
 export async function getCurrentAdmin() {
   const session = readSession()
-  return session?.admin ?? null
+  if (!session?.token) return null
+
+  const user = await request('/auth/me')
+  if (user.role !== 'admin') {
+    removeStorage(SESSION_KEY)
+    return null
+  }
+
+  saveSession({ ...session, admin: user })
+  return user
 }
 
 // Provisional endpoint — to be confirmed with backend team.

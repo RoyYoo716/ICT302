@@ -34,11 +34,16 @@ async function uploadPhoto(file) {
 
 // Create a tamper alert. data: { qrCodeId, reporterName?, contactInfo?,
 // gpsLat?, gpsLng?, description }, plus an optional uploaded photo file.
-async function createAlert({ qrCodeId, reporterName, contactInfo, gpsLat, gpsLng, description }, file) {
+async function createAlert(
+  { qrCodeId, reportedById, reporterName, contactInfo, gpsLat, gpsLng, description },
+  file
+) {
   // 1. Confirm the QR code exists.
   const qr = await prisma.qrCode.findUnique({ where: { id: qrCodeId } });
   if (!qr) {
-    throw new Error('QR code not found');
+    const error = new Error('QR code not found');
+    error.statusCode = 404;
+    throw error;
   }
 
   // 2. Upload the photo (if any) and get back only its URL.
@@ -48,10 +53,11 @@ async function createAlert({ qrCodeId, reporterName, contactInfo, gpsLat, gpsLng
   const alert = await prisma.alert.create({
     data: {
       qrCodeId,
+      reportedById,
       reporterName: reporterName || null,
       contactInfo: contactInfo || null,
-      gpsLat: gpsLat ? Number(gpsLat) : null,
-      gpsLng: gpsLng ? Number(gpsLng) : null,
+      gpsLat,
+      gpsLng,
       photoUrl,
       description: description || null,
       status: 'new',

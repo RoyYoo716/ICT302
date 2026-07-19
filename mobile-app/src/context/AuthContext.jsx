@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { login, register } from "../services/api";
+import { getCurrentUser, login, register, setSessionExpiredHandler } from "../services/api";
 import { clearSession, loadSession, saveSession } from "../services/storage";
 
 const AuthContext = createContext(null);
@@ -16,8 +16,10 @@ export function AuthProvider({ children }) {
       try {
         const stored = await loadSession();
         if (mounted && stored?.token) {
+          const currentUser = await getCurrentUser();
           setSession(stored.token);
-          setUser(stored.user);
+          setUser(currentUser);
+          await saveSession({ token: stored.token, user: currentUser });
         }
       } catch {
         if (mounted) {
@@ -34,6 +36,13 @@ export function AuthProvider({ children }) {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    return setSessionExpiredHandler(() => {
+      setSession(null);
+      setUser(null);
+    });
   }, []);
 
   async function signIn(credentials) {

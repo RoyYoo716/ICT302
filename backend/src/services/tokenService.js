@@ -27,9 +27,16 @@ function verifyQrToken(token) {
   return jwt.verify(token, QR_SECRET);
 }
 
+// Used only after TokenExpiredError so an expired, correctly signed token can
+// still be associated with its QR record for audit logging.
+function verifyQrTokenIgnoringExpiration(token) {
+  return jwt.verify(token, QR_SECRET, { ignoreExpiration: true });
+}
+
 // --- Auth tokens: login sessions for app and web ---
 
-// Sign an auth token. payload = { userId, role }
+// Sign an auth token. payload = { userId, authVersion }.
+// The current role is always loaded from the database by auth middleware.
 function signAuthToken(payload, expiresIn = '7d') {
   return jwt.sign(payload, AUTH_SECRET, { expiresIn });
 }
@@ -42,6 +49,7 @@ function verifyAuthToken(token) {
 module.exports = {
   signQrToken,
   verifyQrToken,
+  verifyQrTokenIgnoringExpiration,
   signAuthToken,
   verifyAuthToken,
 };

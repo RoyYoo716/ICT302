@@ -8,7 +8,7 @@ const sections = [
   {
     title: "1. Information We Collect",
     body:
-      "Account Information: When you create an account, the service stores your name, email address, optional phone number, and a one-way hash of your password. Plain-text passwords are not stored.\n\nScan Records: The verification service records the QR record identifier when available, verification result, timestamp, IP address, and user-agent information. The mobile app also keeps your recent scan history locally on your device."
+      "Account Information: When you create an account, the service stores your name, email address, optional phone number, and a one-way hash of your password. Plain-text passwords are not stored.\n\nScan Records: The verification service records the QR record identifier when available, verification result, timestamp, IP address, user-agent information, and the signed-in account for scans made in the mobile app. Your mobile scan history is loaded from these server records."
   },
   {
     title: "2. How We Use Your Information",
@@ -23,7 +23,7 @@ const sections = [
   {
     title: "4. Local Data",
     body:
-      "Your authentication session, local scan history, and profile image are stored on your device. Clearing the app's data or uninstalling the app removes this local information. The profile image is not uploaded to the backend."
+      "Your authentication session and profile image are stored on your device. Clearing the app's data or uninstalling the app removes this local information. Server-held scan records remain available to your account after reinstalling. The profile image is not uploaded to the backend."
   },
   {
     title: "5. Data Security",
