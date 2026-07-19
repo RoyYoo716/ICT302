@@ -8,14 +8,6 @@ export const mockUser = {
   plan: "PRO PLAN"
 };
 
-export const mockSecuritySettings = {
-  twoFactorAuthentication: true,
-  biometricUnlock: true,
-  autoScanOnOpen: false,
-  safeMode: true,
-  sessionTimeout: "30min"
-};
-
 export const mockNotificationPreferences = {
   threatAlerts: true,
   safeScanConfirmations: false,

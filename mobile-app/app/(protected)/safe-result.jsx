@@ -7,8 +7,7 @@ import { AppScreen } from "../../src/components/ui/AppScreen";
 import { GradientButton, OutlineButton } from "../../src/components/ui/GradientButton";
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
-import { mockSafeResult } from "../../src/data/mockData";
-import { saveScanHistoryRecord } from "../../src/services/api";
+import { saveScanHistoryRecord } from "../../src/services/scanHistory";
 
 export default function SafeResultRoute() {
   const params = useLocalSearchParams();

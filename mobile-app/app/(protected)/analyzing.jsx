@@ -5,7 +5,8 @@ import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
-import { saveScanHistoryRecord, verifyQRCode } from "../../src/services/api";
+import { verifyQRCode } from "../../src/services/api";
+import { saveScanHistoryRecord } from "../../src/services/scanHistory";
 
 const steps = [
   { label: "Contacting verification server...", doneAt: 40 },
@@ -46,14 +47,16 @@ export default function AnalyzingRoute() {
       });
       if (!mounted) return;
 
+      let savedScan = null;
+
       try {
-        await saveScanHistoryRecord({
+        savedScan = await saveScanHistoryRecord({
           ...verification,
           scannedValue,
           source
         });
       } catch {
-        // Mock history should never block the scan result flow.
+        // Local history persistence should never block the scan result flow.
       }
       if (!mounted) return;
 
@@ -64,6 +67,7 @@ export default function AnalyzingRoute() {
         domain: verification.domain ?? "",
         qrId: verification.qrId ?? "",
         label: verification.label ?? "",
+        scanId: savedScan?.id ?? "",
         scannedValue,
         source
       };

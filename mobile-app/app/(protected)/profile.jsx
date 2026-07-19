@@ -23,24 +23,11 @@ const sections = [
       {
         icon: "lock",
         title: "Change Password",
-        subtitle: "Last changed 30 days ago",
         route: "/(protected)/change-password"
-      }
-    ]
-  },
-  {
-    title: "SECURITY",
-    rows: [
-      {
-        icon: "shield",
-        title: "Security Settings",
-        subtitle: "Two-factor authentication: ON",
-        route: "/(protected)/security-settings"
       },
       {
         icon: "bell",
-        title: "Notification Preferences",
-        subtitle: "Threat alerts enabled",
+        title: "Notification",
         route: "/(protected)/notification-preferences"
       }
     ]
@@ -118,6 +105,7 @@ export default function ProfileRoute() {
           <View style={styles.userCopy}>
             <Text style={styles.userName}>{user.fullName}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
+            <Text style={styles.userPhone}>{user.phoneNumber || "No phone number"}</Text>
           </View>
         </View>
 
@@ -220,6 +208,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "700"
+  },
+  userPhone: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
+    marginTop: 2
   },
   plan: {
     alignSelf: "flex-start",

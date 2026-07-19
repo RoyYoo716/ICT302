@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
@@ -13,37 +13,7 @@ export default function ChangePasswordRoute() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const passwordRules = useMemo(
-    () => [
-      {
-        key: "length",
-        label: "At least 10 characters",
-        passed: newPassword.length >= 10
-      },
-      {
-        key: "uppercase",
-        label: "One uppercase letter",
-        passed: /[A-Z]/.test(newPassword)
-      },
-      {
-        key: "number",
-        label: "One number",
-        passed: /\d/.test(newPassword)
-      },
-      {
-        key: "special",
-        label: "One special character",
-        passed: /[^A-Za-z0-9]/.test(newPassword)
-      }
-    ],
-    [newPassword]
-  );
-
-  const metRuleCount = passwordRules.filter((rule) => rule.passed).length;
   const passwordsMismatch = Boolean(confirmPassword && confirmPassword !== newPassword);
-  const showStrength = Boolean(newPassword || confirmPassword || error);
-  const strengthLabel = getStrengthLabel(metRuleCount);
-  const strengthColor = getStrengthColor(metRuleCount);
 
   function clearErrorAndSet(setter, value) {
     setter(value);
@@ -63,15 +33,15 @@ export default function ChangePasswordRoute() {
       return "Confirm New Password is required.";
     }
 
+    if (newPassword.length < 6) {
+      return "New Password must be at least 6 characters.";
+    }
+
     if (newPassword === currentPassword) {
-      return "New Password must be different from Current Password.";
+      return "New password must be different from the current password.";
     }
 
-    if (passwordRules.some((rule) => !rule.passed)) {
-      return "New Password does not meet all password requirements.";
-    }
-
-    if (confirmPassword !== newPassword) {
+    if (newPassword !== confirmPassword) {
       return "Passwords do not match.";
     }
 
@@ -98,13 +68,7 @@ export default function ChangePasswordRoute() {
         { text: "OK", onPress: () => router.back() }
       ]);
     } catch (apiError) {
-      if (apiError?.code === "INVALID_CURRENT_PASSWORD") {
-        setError("Current Password is incorrect.");
-      } else if (apiError?.code === "PASSWORD_REUSED") {
-        setError("New Password must be different from Current Password.");
-      } else {
-        setError("Unable to update password. Please try again.");
-      }
+      setError(apiError?.message || "Unable to update password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -134,7 +98,7 @@ export default function ChangePasswordRoute() {
         label="NEW PASSWORD"
         value={newPassword}
         onChangeText={(value) => clearErrorAndSet(setNewPassword, value)}
-        placeholder="Min. 10 characters"
+        placeholder="Min. 6 characters"
       />
       <PasswordField
         label="CONFIRM NEW PASSWORD"
@@ -146,32 +110,6 @@ export default function ChangePasswordRoute() {
 
       {passwordsMismatch ? <Text style={styles.inlineError}>Passwords do not match</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      {showStrength ? (
-        <View style={styles.strengthCard}>
-          <View style={styles.strengthHeader}>
-            <Text style={styles.strengthTitle}>Password strength</Text>
-            <Text style={[styles.strengthValue, { color: strengthColor }]}>
-              {strengthLabel}
-            </Text>
-          </View>
-          <View style={styles.strengthBars}>
-            {[0, 1, 2, 3].map((item) => (
-              <View
-                key={item}
-                style={[
-                  styles.strengthBar,
-                  item < metRuleCount ? { backgroundColor: strengthColor } : null
-                ]}
-              />
-            ))}
-          </View>
-
-          {passwordRules.map((rule) => (
-            <RequirementRow key={rule.key} label={rule.label} passed={rule.passed} />
-          ))}
-        </View>
-      ) : null}
 
       <Pressable
         style={[styles.updateButton, loading ? styles.updateButtonDisabled : null]}
@@ -208,34 +146,6 @@ function PasswordField({ label, value, onChangeText, placeholder, hasError = fal
       </View>
     </View>
   );
-}
-
-function RequirementRow({ label, passed }) {
-  return (
-    <View style={styles.requirementRow}>
-      <Feather
-        name={passed ? "check-circle" : "circle"}
-        size={13}
-        color={passed ? colors.green500 : "#275D9A"}
-      />
-      <Text style={[styles.requirementText, passed ? styles.requirementPassed : null]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function getStrengthLabel(count) {
-  if (count >= 4) return "Strong";
-  if (count >= 2) return "Fair";
-  if (count >= 1) return "Weak";
-  return "Weak";
-}
-
-function getStrengthColor(count) {
-  if (count >= 4) return colors.green500;
-  if (count >= 2) return colors.warning500;
-  return colors.danger300;
 }
 
 const styles = StyleSheet.create({

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import Feather from "@expo/vector-icons/Feather";
@@ -7,7 +8,7 @@ import { BottomNav } from "../../src/components/layout/BottomNav";
 import { colors } from "../../src/constants/colors";
 import { spacing } from "../../src/constants/spacing";
 import { typography } from "../../src/constants/typography";
-import { deleteScanHistoryRecord, getScanHistory } from "../../src/services/api";
+import { deleteScanHistoryRecord, getScanHistory } from "../../src/services/scanHistory";
 import { formatScanTime, truncateMiddle } from "../../src/utils/formatters";
 
 const filters = [
@@ -21,20 +22,22 @@ export default function HistoryRoute() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
 
-    async function loadHistory() {
-      const scans = await getScanHistory();
-      if (mounted) setHistory(scans);
-    }
+      async function loadHistory() {
+        const scans = await getScanHistory();
+        if (mounted) setHistory(scans);
+      }
 
-    loadHistory();
+      loadHistory();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const filteredHistory = useMemo(() => {
     const query = search.trim().toLowerCase();

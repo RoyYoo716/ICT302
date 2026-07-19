@@ -8,8 +8,9 @@ import { BottomNav } from "../../src/components/layout/BottomNav";
 import { colors } from "../../src/constants/colors";
 import { spacing } from "../../src/constants/spacing";
 import { typography } from "../../src/constants/typography";
-import { getScanHistory, getUserProfile } from "../../src/services/api";
-import { truncateMiddle } from "../../src/utils/formatters";
+import { getUserProfile } from "../../src/services/api";
+import { getScanHistory } from "../../src/services/scanHistory";
+import { formatRelativeScanTime, truncateMiddle } from "../../src/utils/formatters";
 
 export default function DashboardRoute() {
   const [profile, setProfile] = useState(null);
@@ -141,7 +142,7 @@ function ScanRow({ item }) {
         <Text style={[styles.badge, isSafe ? styles.safeBadge : styles.blockedBadge]}>
           {isSafe ? "SAFE" : "BLOCKED"}
         </Text>
-        <Text style={styles.scanTime}>{isSafe ? "2 min ago" : "1 hr ago"}</Text>
+        <Text style={styles.scanTime}>{formatRelativeScanTime(item.scannedAt)}</Text>
       </View>
     </View>
   );

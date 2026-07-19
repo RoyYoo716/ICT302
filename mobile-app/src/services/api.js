@@ -1,4 +1,5 @@
 import { loadSession, clearSession } from "./storage";
+import { loadLocalAvatarUri } from "./avatarStorage";
 import { File } from "expo-file-system";
 // ---- Real backend plumbing ---------------------------------------
 // Dev + prod both talk to the live Render backend. If you ever need a
@@ -44,18 +45,12 @@ async function request(path, { method = "GET", body, headers } = {}) {
 import {
   mockNotificationPreferences,
   mockSafeResult,
-  mockScanHistory,
-  mockSecuritySettings,
   mockUser,
   mockWarningResult
 } from "../data/mockData";
 
 const MOCK_DELAY_MS = 350;
-const localScanHistory = [];
-const deletedScanHistoryIds = new Set();
 let mutableUserProfile = { ...mockUser };
-let mockCurrentPassword = "password123";
-let mutableSecuritySettings = { ...mockSecuritySettings };
 let mutableNotificationPreferences = { ...mockNotificationPreferences };
 
 function wait(ms = MOCK_DELAY_MS) {
@@ -138,53 +133,6 @@ export async function verifyQRCode(payload) {
 }
 
 
-export async function saveScanHistoryRecord(scan) {
-  await wait(100);
-
-  const url = scan?.destinationUrl || scan?.scannedValue || "";
-  const domain = scan?.domain || getDomain(url) || "Unknown destination";
-  const status = scan?.status === "blocked" ? "blocked" : "safe";
-  const requestedId = scan?.scanId || scan?.id || "";
-  const duplicate = localScanHistory.find((record) => {
-    if (requestedId && record.id === requestedId) return true;
-    return !requestedId && record.url === url && record.status === status;
-  });
-
-  if (duplicate) {
-    return { ...duplicate };
-  }
-
-  const record = {
-    id: requestedId || `scan_local_${Date.now()}`,
-    domain,
-    url,
-    status,
-    scannedAt: new Date().toISOString(),
-    source: scan?.source || "camera"
-  };
-
-  deletedScanHistoryIds.delete(record.id);
-  localScanHistory.unshift(record);
-  return { ...record };
-}
-
-export async function deleteScanHistoryRecord(id) {
-  await wait(100);
-
-  if (!id) {
-    return { success: false, id };
-  }
-
-  deletedScanHistoryIds.add(id);
-  const localIndex = localScanHistory.findIndex((record) => record.id === id);
-
-  if (localIndex >= 0) {
-    localScanHistory.splice(localIndex, 1);
-  }
-
-  return { success: true, id };
-}
-
 export async function submitTamperReport(report) {
   const form = new FormData();
   form.append("qrCodeId", report.qrCodeId);
@@ -218,68 +166,29 @@ export async function submitTamperReport(report) {
   return data;
 }
 
-export async function getScanHistory() {
-  await wait();
-
-  return [...localScanHistory, ...mockScanHistory].filter(
-    (record) => !deletedScanHistoryIds.has(record.id)
-  );
-}
-
 export async function getUserProfile() {
   const session = await loadSession();
-  return session?.user ?? null;
+  if (!session?.user) return null;
+
+  const avatarUri = await loadLocalAvatarUri(session.user.id);
+  return { ...session.user, avatarUri };
 }
 
 export async function updateUserProfile(profileData) {
-  await wait();
-
-  mutableUserProfile = {
-    ...mutableUserProfile,
-    ...profileData
-  };
-
-  return { ...mutableUserProfile };
+  return request("/auth/profile", {
+    method: "PATCH",
+    body: {
+      fullName: profileData?.fullName?.trim(),
+      phoneNumber: profileData?.phoneNumber?.trim() || null
+    }
+  });
 }
 
 export async function changePassword(currentPassword, newPassword) {
-  await wait();
-
-  if (currentPassword !== mockCurrentPassword) {
-    const error = new Error("Current password is incorrect.");
-    error.code = "INVALID_CURRENT_PASSWORD";
-    throw error;
-  }
-
-  if (newPassword === currentPassword) {
-    const error = new Error("New password must be different from the current password.");
-    error.code = "PASSWORD_REUSED";
-    throw error;
-  }
-
-  mockCurrentPassword = newPassword;
-
-  return {
-    success: true,
-    message: "Password updated successfully"
-  };
-}
-
-export async function getSecuritySettings() {
-  await wait();
-
-  return { ...mutableSecuritySettings };
-}
-
-export async function updateSecuritySettings(settings) {
-  await wait(120);
-
-  mutableSecuritySettings = {
-    ...mutableSecuritySettings,
-    ...settings
-  };
-
-  return { ...mutableSecuritySettings };
+  return request("/auth/password", {
+    method: "PATCH",
+    body: { currentPassword, newPassword }
+  });
 }
 
 export async function getNotificationPreferences() {

@@ -7,16 +7,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { colors } from "../../src/constants/colors";
 import { getUserProfile, updateUserProfile } from "../../src/services/api";
+import { saveLocalAvatar } from "../../src/services/avatarStorage";
 import { useAuth } from "../../src/context/AuthContext";
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function createForm(profile) {
   return {
-    name: profile?.fullName ?? "",
+    fullName: profile?.fullName ?? "",
     email: profile?.email ?? "",
-    phone: profile?.phone ?? "",
-    memberSince: profile?.memberSince ?? "",
+    phoneNumber: profile?.phoneNumber ?? "",
     avatarUri: profile?.avatarUri ?? null
   };
 }
@@ -27,6 +25,7 @@ export default function AccountInformationRoute() {
   const [form, setForm] = useState(createForm(null));
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -66,6 +65,7 @@ export default function AccountInformationRoute() {
 
   async function pickAvatar(source) {
     setError("");
+    setUpdatingAvatar(true);
 
     try {
       if (source === "camera") {
@@ -105,33 +105,31 @@ export default function AccountInformationRoute() {
 
       if (result.canceled) return;
 
-      const uri = result.assets?.[0]?.uri;
-      if (uri) {
-        updateField("avatarUri", uri);
+      const sourceUri = result.assets?.[0]?.uri;
+      if (!sourceUri || !profile?.id) {
+        throw new Error("Unable to identify the selected image or signed-in user.");
       }
-    } catch {
-      setError("Unable to update avatar. Please try again.");
+
+      const avatarUri = await saveLocalAvatar({ sourceUri, userId: profile.id });
+      const nextProfile = { ...profile, avatarUri };
+
+      setProfile(nextProfile);
+      setForm((current) => ({ ...current, avatarUri }));
+      await updateUser({ avatarUri });
+    } catch (avatarError) {
+      setError(avatarError?.message || "Unable to update avatar. Please try again.");
+    } finally {
+      setUpdatingAvatar(false);
     }
   }
 
   async function handleSave() {
-    const nextName = form.name.trim();
-    const nextEmail = form.email.trim();
-    const nextPhone = form.phone.trim();
+    const nextName = form.fullName.trim();
+    const nextPhone = form.phoneNumber.trim();
     const phoneDigits = nextPhone.replace(/\D/g, "");
 
     if (!nextName) {
       setError("Full Name is required.");
-      return;
-    }
-
-    if (!nextEmail) {
-      setError("Email Address is required.");
-      return;
-    }
-
-    if (!emailPattern.test(nextEmail)) {
-      setError("Please enter a valid email address.");
       return;
     }
 
@@ -148,24 +146,23 @@ export default function AccountInformationRoute() {
 
     try {
       const updatedProfile = await updateUserProfile({
-        name: nextName,
-        email: nextEmail,
-        phone: nextPhone,
-        avatarUri: form.avatarUri
+        fullName: nextName,
+        phoneNumber: nextPhone
       });
 
-      await updateUser(updatedProfile);
-      setProfile(updatedProfile);
-      setForm(createForm(updatedProfile));
+      const nextProfile = { ...updatedProfile, avatarUri: form.avatarUri };
+      await updateUser(nextProfile);
+      setProfile(nextProfile);
+      setForm(createForm(nextProfile));
       setIsEditing(false);
-    } catch {
-      setError("Unable to save account information. Please try again.");
+    } catch (apiError) {
+      setError(apiError?.message || "Unable to save account information. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
-  const avatarLetter = (form.name || profile?.fullName || "?").slice(0, 1);
+  const avatarLetter = (form.fullName || profile?.fullName || "?").slice(0, 1);
 
   return (
     <AppScreen scroll contentStyle={styles.screen}>
@@ -202,10 +199,13 @@ export default function AccountInformationRoute() {
             <Text style={styles.avatarText}>{avatarLetter}</Text>
           )}
         </LinearGradient>
-
         {isEditing ? (
-          <Pressable style={styles.avatarEditButton} onPress={handleAvatarAction}>
-            <Feather name="edit-2" size={14} color={colors.white} />
+          <Pressable
+            style={styles.avatarEditButton}
+            onPress={handleAvatarAction}
+            disabled={updatingAvatar}
+          >
+            <Feather name={updatingAvatar ? "clock" : "edit-2"} size={14} color={colors.white} />
           </Pressable>
         ) : null}
       </View>
@@ -215,36 +215,28 @@ export default function AccountInformationRoute() {
       <AccountField
         label="FULL NAME"
         icon="user"
-        value={form.name}
+        value={form.fullName}
         editable={isEditing}
         locked={!isEditing}
-        onChangeText={(value) => updateField("name", value)}
+        onChangeText={(value) => updateField("fullName", value)}
       />
       <AccountField
         label="EMAIL ADDRESS"
         icon="mail"
         value={form.email}
-        editable={isEditing}
-        locked={!isEditing}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        onChangeText={(value) => updateField("email", value)}
+        editable={false}
+        locked
       />
       <AccountField
         label="PHONE NUMBER"
         icon="smartphone"
-        value={form.phone}
+        value={form.phoneNumber}
         editable={isEditing}
         locked={!isEditing}
+        placeholder="+65 XXXX XXXX"
+        placeholderTextColor="#275D9A"
         keyboardType="phone-pad"
-        onChangeText={(value) => updateField("phone", value)}
-      />
-      <AccountField
-        label="MEMBER SINCE"
-        icon="clock"
-        value={form.memberSince}
-        editable={false}
-        locked={false}
+        onChangeText={(value) => updateField("phoneNumber", value)}
       />
     </AppScreen>
   );
@@ -256,6 +248,7 @@ function AccountField({
   value,
   editable,
   locked,
+  placeholder,
   keyboardType = "default",
   autoCapitalize = "words",
   onChangeText

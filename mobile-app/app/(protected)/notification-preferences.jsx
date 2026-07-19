@@ -124,7 +124,7 @@ export default function NotificationPreferencesRoute() {
       </Pressable>
 
       <View style={styles.header}>
-        <Text style={styles.title}>Notification Preferences</Text>
+        <Text style={styles.title}>Notification</Text>
         <Text style={styles.subtitle}>Choose how and when VAFPQR contacts you.</Text>
       </View>
 
