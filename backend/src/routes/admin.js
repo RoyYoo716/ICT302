@@ -12,10 +12,20 @@ const router = express.Router();
 // Apply admin protection to EVERY route in this file.
 router.use(requireAdmin);
 
+// Time passing never runs code by itself — so admin read endpoints
+// lazily sweep any 'active' QR whose expiry has passed to 'expired'.
+async function expireStaleQrCodes() {
+  await prisma.qrCode.updateMany({
+    where: { status: 'active', expiresAt: { lt: new Date() } },
+    data: { status: 'expired' },
+  });
+}
+
 // --- GET /api/admin/qrcodes?search=&status=&page=&limit= ---
 // Paginated list plus the summary counts used by the stat cards.
 router.get('/qrcodes', async (req, res) => {
   try {
+    await expireStaleQrCodes();
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Number(req.query.limit) || 20);
     const { search, status } = req.query;
@@ -77,6 +87,7 @@ router.get('/qrcodes', async (req, res) => {
 // MUST be declared before '/qrcodes/:id', or Express treats "export" as an id.
 router.get('/qrcodes/export', async (req, res) => {
   try {
+    await expireStaleQrCodes();
     const qrCodes = await prisma.qrCode.findMany({
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { ScanLog: true, Alert: true } } },
@@ -161,6 +172,15 @@ router.patch('/qrcodes/:id', async (req, res) => {
     const existing = await prisma.qrCode.findUnique({ where: { id: req.params.id } });
     if (!existing) {
       return res.status(404).json({ error: 'QR code not found' });
+    }
+
+    // Expiry is baked into the printed JWT — no status change can revive
+    // an expired code, so refuse to pretend otherwise.
+    const isExpired = existing.expiresAt && existing.expiresAt < new Date();
+    if (isExpired && status !== 'expired') {
+      return res.status(400).json({
+        error: 'This QR code has expired. Expiry is permanent — generate a new QR code instead.',
+      });
     }
 
     const qr = await prisma.qrCode.update({
@@ -441,6 +461,7 @@ router.delete('/users/:id', requireAdmin, async (req, res) => {
 // status donut counts, and sidebar badge counts.
 router.get('/metrics', async (req, res) => {
   try {
+    await expireStaleQrCodes();
     const now = new Date();
     const day = 24 * 60 * 60 * 1000;
     const last7Start = new Date(now.getTime() - 7 * day);

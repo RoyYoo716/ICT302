@@ -58,11 +58,15 @@ async function createAlert({ qrCodeId, reporterName, contactInfo, gpsLat, gpsLng
     },
   });
 
-  // 4. Flag the QR code as suspicious on report.
-  await prisma.qrCode.update({
-    where: { id: qrCodeId },
-    data: { status: 'suspicious' },
-  });
+  // 4. Flag the QR code as suspicious — but only from 'active'.
+  // 'blacklisted' is a stronger, admin-confirmed verdict and 'expired'
+  // is terminal; a user report must never downgrade either.
+  if (qr.status === 'active') {
+    await prisma.qrCode.update({
+      where: { id: qrCodeId },
+      data: { status: 'suspicious' },
+    });
+  }
 
   // 5. Write an ActivityLog entry (the "ship's log").
   await prisma.activityLog.create({
