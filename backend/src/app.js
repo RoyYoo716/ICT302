@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const verifySecuritySession = require('./middleware/SecurityAuth.js');
+const verifySecuritySession = require('./middleware/SecurityAuth');
 
 app.use(cors());
 app.use(express.json());
