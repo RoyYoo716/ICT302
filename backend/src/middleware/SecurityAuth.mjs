@@ -1,6 +1,6 @@
-import { supabaseServer } from '../config/SupabaseServerClient.js';
+const { supabaseServer } = require('../config/SupabaseServerClient');
 
-export const verifySecuritySession = async (req, res, next) => {
+const verifySecuritySession = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -20,3 +20,5 @@ export const verifySecuritySession = async (req, res, next) => {
     return res.status(500).json({ error: 'Internal server error during authentication' });
   }
 };
+
+module.exports = { verifySecuritySession };
