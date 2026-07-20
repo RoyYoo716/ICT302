@@ -1,5 +1,8 @@
 // app.js — Assembles the Express app (does not open the port yet).
+const { verifySecuritySession } = require('./middleware/SecurityAuth');
 
+// Example of securing a specific route group:
+app.use('/api/admin', verifySecuritySession, require('./routes/admin'));
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -21,25 +24,19 @@ app.use('/api/scans', require('./routes/scan'));
 app.use('/api/alert', require('./routes/alert'));
 app.use('/api/admin', require('./routes/admin'));
 
-// Static: Landing Page and Admin Frontend (pointing to root-level admin-web/dist)
+// Static: Landing Page (Vite build copied into backend/landing-dist at deploy).
+// Browser users arrive here via the redirect from GET /api/qr/verify.
 app.use('/landing', express.static(path.join(__dirname, '../landing-dist')));
-app.use(express.static(path.join(__dirname, '../../admin-web/dist')));
+app.use(express.static(path.join(__dirname, '../admin-dist')));
 
 // SPA fallback: any non-API, non-file route serves the admin app's
 // index.html so react-router deep links survive a page refresh.
+// (Middleware instead of app.get('*') — Express 5 changed wildcard syntax.)
 app.use((req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/landing')) {
     return next(); // let API 404s stay API 404s
   }
-  res.sendFile(path.join(__dirname, '../../admin-web/dist/index.html'));
+  res.sendFile(path.join(__dirname, '../admin-dist/index.html'));
 });
-
-// Server listener
-const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Server running successfully on port ${PORT}`);
-  });
-}
 
 module.exports = app;
