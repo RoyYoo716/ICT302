@@ -130,6 +130,7 @@ router.get('/qrcodes/:id', async (req, res) => {
       include: {
         ScanLog: { orderBy: { scannedAt: 'desc' }, take: 50 },
         Alert: { orderBy: { createdAt: 'desc' } },
+        _count: { select: { ScanLog: true, Alert: true } },
       },
     });
 
@@ -147,7 +148,8 @@ router.get('/qrcodes/:id', async (req, res) => {
       status: qr.status,
       expiresAt: qr.expiresAt,
       createdAt: qr.createdAt,
-      totalScans: qr.ScanLog.length,
+      scanCount: qr._count.ScanLog,
+      alertCount: qr._count.Alert,
       scanHistory: qr.ScanLog,
       alerts: qr.Alert,
       qrImage,
@@ -186,6 +188,7 @@ router.patch('/qrcodes/:id', async (req, res) => {
     const qr = await prisma.qrCode.update({
       where: { id: req.params.id },
       data: { status },
+      include: { _count: { select: { ScanLog: true, Alert: true } } },
     });
 
     // The "ship's log" — record who changed what.
@@ -198,7 +201,16 @@ router.patch('/qrcodes/:id', async (req, res) => {
       },
     });
 
-    res.json(qr);
+    res.json({
+      id: qr.id,
+      label: qr.label,
+      destinationUrl: qr.destinationUrl,
+      status: qr.status,
+      expiresAt: qr.expiresAt,
+      createdAt: qr.createdAt,
+      scanCount: qr._count.ScanLog,
+      alertCount: qr._count.Alert,
+    });
   } catch (err) {
     console.error('Admin qrcode update error:', err);
     res.status(500).json({ error: 'Status update failed' });
@@ -216,7 +228,7 @@ router.get('/alerts', async (req, res) => {
     const { status } = req.query;
     const where = status ? { status } : {};
 
-    const [alerts, total] = await Promise.all([
+    const [alerts, total, newTotal] = await Promise.all([
       prisma.alert.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -227,11 +239,13 @@ router.get('/alerts', async (req, res) => {
         },
       }),
       prisma.alert.count({ where }),
+      prisma.alert.count({ where: { status: 'new' } }),
     ]);
 
     res.json({
       data: alerts,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      summary: { new: newTotal },
     });
   } catch (err) {
     console.error('Admin alerts list error:', err);
@@ -258,6 +272,9 @@ router.patch('/alerts/:id', async (req, res) => {
     const alert = await prisma.alert.update({
       where: { id: req.params.id },
       data: { status },
+      include: {
+        QrCode: { select: { id: true, label: true, destinationUrl: true, status: true } },
+      },
     });
 
     await prisma.activityLog.create({
@@ -269,7 +286,8 @@ router.patch('/alerts/:id', async (req, res) => {
       },
     });
 
-    res.json(alert);
+    const newTotal = await prisma.alert.count({ where: { status: 'new' } });
+    res.json({ alert, summary: { new: newTotal } });
   } catch (err) {
     console.error('Admin alert update error:', err);
     res.status(500).json({ error: 'Alert update failed' });

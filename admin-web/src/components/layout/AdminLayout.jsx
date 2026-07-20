@@ -19,13 +19,11 @@ const FALLBACK_ADMIN = {
 const SESSION_REVALIDATION_INTERVAL_MS = 10_000
 
 let cachedNewAlertNotifications = null
+let cachedNewAlertCount = null
 
-function getNewAlertNotifications(alerts) {
-  return alerts.filter((alert) => alert.status === 'New')
-}
-
-function updateNewAlertNotificationCache(notifications) {
+function updateNewAlertNotificationCache(notifications, count) {
   cachedNewAlertNotifications = notifications
+  cachedNewAlertCount = count
 }
 
 function Icon({ name }) {
@@ -151,7 +149,6 @@ function getDisplayAdmin(admin) {
 
 export default function AdminLayout({
   activeSection = 'dashboard',
-  alertNotifications,
   children,
   title = 'Dashboard',
 }) {
@@ -163,6 +160,7 @@ export default function AdminLayout({
   const [loadedAlertNotifications, setLoadedAlertNotifications] = useState(
     cachedNewAlertNotifications,
   )
+  const [newAlertCount, setNewAlertCount] = useState(cachedNewAlertCount)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
 
   useEffect(() => {
@@ -211,30 +209,52 @@ export default function AdminLayout({
   }, [])
 
   useEffect(() => {
-    if (Array.isArray(alertNotifications)) {
-      updateNewAlertNotificationCache(alertNotifications)
-      setLoadedAlertNotifications(alertNotifications)
-      return undefined
-    }
-
     let isMounted = true
+    let requestInFlight = false
 
     async function loadAlertNotifications() {
-      const response = await getAlerts()
-      const newAlerts = getNewAlertNotifications(response.alerts)
+      if (requestInFlight) return
+      requestInFlight = true
 
-      if (isMounted) {
-        updateNewAlertNotificationCache(newAlerts)
-        setLoadedAlertNotifications(newAlerts)
+      try {
+        const response = await getAlerts({ status: 'New', page: 1, limit: 5 })
+        const count = response.summary?.new ?? response.pagination.total
+
+        if (isMounted) {
+          updateNewAlertNotificationCache(response.alerts, count)
+          setLoadedAlertNotifications(response.alerts)
+          setNewAlertCount(count)
+        }
+      } catch {
+        // Notifications are non-blocking; keep the last successful snapshot.
+      } finally {
+        requestInFlight = false
+      }
+    }
+
+    function refreshVisibleNotifications() {
+      if (document.visibilityState === 'visible') {
+        loadAlertNotifications()
       }
     }
 
     loadAlertNotifications()
+    const intervalId = window.setInterval(
+      refreshVisibleNotifications,
+      SESSION_REVALIDATION_INTERVAL_MS,
+    )
+    window.addEventListener('focus', refreshVisibleNotifications)
+    window.addEventListener('vafpqr:alerts-changed', loadAlertNotifications)
+    document.addEventListener('visibilitychange', refreshVisibleNotifications)
 
     return () => {
       isMounted = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', refreshVisibleNotifications)
+      window.removeEventListener('vafpqr:alerts-changed', loadAlertNotifications)
+      document.removeEventListener('visibilitychange', refreshVisibleNotifications)
     }
-  }, [alertNotifications])
+  }, [])
 
   useEffect(() => {
     if (!isNotificationOpen) {
@@ -282,13 +302,8 @@ export default function AdminLayout({
   }, [admin])
 
   const currentDate = formatDashboardDate(new Date())
-  const currentAlertNotifications = Array.isArray(alertNotifications)
-    ? alertNotifications
-    : loadedAlertNotifications || []
-  const currentAlertCount =
-    Array.isArray(alertNotifications) || Array.isArray(loadedAlertNotifications)
-      ? currentAlertNotifications.length
-      : null
+  const currentAlertNotifications = loadedAlertNotifications || []
+  const currentAlertCount = newAlertCount
   const alertsBadge = currentAlertCount > 0 ? String(currentAlertCount) : ''
 
   if (!isLoading && !admin) {

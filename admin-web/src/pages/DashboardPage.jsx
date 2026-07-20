@@ -4,6 +4,7 @@ import RecentActivity from '../components/dashboard/RecentActivity.jsx'
 import ScanVolumeChart from '../components/dashboard/ScanVolumeChart.jsx'
 import StatusDonutChart from '../components/dashboard/StatusDonutChart.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 import { getMetrics, getRecentActivity } from '../services/api.js'
 
 const SKELETON_ITEMS = ['total', 'active', 'blacklisted', 'suspicious', 'alerts', 'scans']
@@ -36,29 +37,40 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState(null)
   const [activities, setActivities] = useState([])
+  const [error, setError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     let isMounted = true
     async function loadDashboard() {
-      // Fire both requests at once instead of one after the other.
-      const [dashboardMetrics, recent] = await Promise.all([
-        getMetrics(),
-        getRecentActivity(),
-      ])
-      if (!isMounted) return
-      setMetrics(dashboardMetrics)
-      setActivities(recent.activities)
+      setError('')
+      try {
+        // Fire both requests at once instead of one after the other.
+        const [dashboardMetrics, recent] = await Promise.all([
+          getMetrics(),
+          getRecentActivity(),
+        ])
+        if (!isMounted) return
+        setMetrics(dashboardMetrics)
+        setActivities(recent.activities)
+      } catch (apiError) {
+        if (isMounted) {
+          setError(apiError.message || 'Unable to load the dashboard.')
+        }
+      }
     }
     loadDashboard()
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [retryKey])
 
   return (
     <AdminLayout title="Dashboard" activeSection="dashboard">
       <main className="dashboard-content">
-        {!metrics ? (
+        {error && !metrics ? (
+          <ErrorState message={error} onRetry={() => setRetryKey((key) => key + 1)} />
+        ) : !metrics ? (
           <DashboardSkeleton />
         ) : (
           <>

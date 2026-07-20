@@ -64,7 +64,7 @@ router.get('/verify', async (req, res) => {
     // Verification and scan logging already happened above — the landing
     // page only DISPLAYS the result (never re-verifies; avoids double logs).
     const params = new URLSearchParams();
-    params.set('valid', result.status === 'valid' ? 'true' : 'false');
+    params.set('status', result.status);
     if (result.reason) params.set('reason', result.reason);
     if (process.env.APK_DOWNLOAD_URL) params.set('apk', process.env.APK_DOWNLOAD_URL);
     // NOTE: destinationUrl is deliberately NOT passed — browser users

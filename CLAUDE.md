@@ -33,7 +33,7 @@ QR codes encode **plain HTTPS URLs only**. All security logic (JWT validation, e
      Authenticated mobile POST              Public browser GET
        /api/qr/verify/mobile                 /api/qr/verify?token=
                       │                           │
-       user-linked ScanLog + JSON           302 → /landing/?valid=&reason=&apk=
+       user-linked ScanLog + JSON           302 → /landing/?status=&reason=&apk=
        → in-app result screen               → verification result + app CTA
        → destination reachable              → NO destination access
        → authenticated report flow
@@ -117,7 +117,7 @@ Schema decisions (documented with rationale — do not revisit):
 
 ### Public (no auth)
 - `GET /api/health` — liveness check; also used to **pre-warm Render before demos**
-- `GET /api/qr/verify?token=` — validate signature → expiry → blacklist → **log every attempt to ScanLog** → browser `302 → /landing/?valid=…&reason=…&apk=…` (the Landing Page makes **no API call** of its own — avoids double ScanLog)
+- `GET /api/qr/verify?token=` — validate signature → expiry → blacklist → **log every attempt to ScanLog** → browser `302 → /landing/?status=…&reason=…&apk=…` (the Landing Page makes **no API call** of its own — avoids double ScanLog)
 
 ### Auth (shared by app and web)
 - `POST /api/auth/register` · `POST /api/auth/login` (updates lastLogin) · `POST /api/auth/forgot-password` · `POST /api/auth/reset-password`
@@ -139,15 +139,17 @@ Schema decisions (documented with rationale — do not revisit):
 
 ## Web Frontend (admin-web — integration COMPLETE)
 
-- `src/services/api.js` was originally a **1,580-line localStorage simulator with zero real HTTP calls**; now a real API service (~790 lines incl. session helpers).
+- `src/services/api.js` was originally a **1,580-line localStorage simulator with zero real HTTP calls**; it is now a real API service with obsolete local mock/storage helpers removed.
 - Dev: Vite proxy `/api` → `http://localhost:3000`. Prod: same-origin (served by Express).
 - Admin session contract: store `{ token, admin }` in tab-scoped `sessionStorage`; backend login returns `{ token, user: { id, fullName, email, role } }` — **map `user` → `admin`**. Separate tabs may sign in as different administrators; closing a tab ends that tab's session.
 - `AdminLayout` revalidates `/api/auth/me` on entry, window focus, visibility return, and every 10 seconds. The Users page refreshes its list on the same focus/10-second cadence so role changes made by another administrator appear without a manual reload.
 - Route guards: `RequireAuth` component gates all dashboard routes; auth pages include Sign in, Register, **Forgot Password, Reset Password**.
 - Pages, all on real API: **Dashboard** (stat cards, 4-tab scan volume chart, status donut, Recent Activity), **QR Codes** (server-side search/filter/pagination, generate form with label, CSV export, detail pop-up with Label row; first table column widened to 220px), **Alerts** (photo evidence, GPS formatting, status filter, resolve/reopen; IDs displayed as `alert.id.slice(0, 8)` and `alert.qrLabel || alert.qrCodeId`), **Users** (search, add, role change, delete), **Settings** (profile edit + password change).
-- Global alert badge count reflects real unresolved alerts.
+- Global alert badge count reflects the backend's complete unresolved-alert count, while the notification menu shows the newest real alerts and refreshes on focus/every 10 seconds.
+- Dashboard, QR Codes, Alerts, Users, and Settings show an API error state with a Retry action instead of remaining in a loading state indefinitely.
+- QR detail/status responses preserve the database scan and alert totals. Alert status responses preserve the related QR information, and resolved alerts can be reopened from the detail modal.
 - Dead mock code removed (`handleMarkReviewed`, `adminNotes`, `NotificationsCard`, `ResetPasswordModal`, `UserFormModal`-era leftovers, etc.).
-- Landing Page (`landing-web`): reads `valid` / `reason` / `apk` query params only; three-state popup (`null` / `'coming-soon'` / `'app-required'`); design tokens: blue `#2563eb`, 14–18px radius, soft shadows.
+- Landing Page (`landing-web`): reads `status` / `reason` / `apk` query params only and renders distinct `valid`, `expired`, `invalid`, `suspicious`, and `blacklisted` results; three-state popup (`null` / `'coming-soon'` / `'app-required'`); design tokens: blue `#2563eb`, 14–18px radius, soft shadows.
 
 ## Mobile App (mobile-app — Expo, IN PROGRESS)
 

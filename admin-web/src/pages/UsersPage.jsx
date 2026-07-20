@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 // import ResetPasswordModal from '../components/users/ResetPasswordModal.jsx'
 import UserFormModal from '../components/users/UserFormModal.jsx'
 import UserProfileDrawer from '../components/users/UserProfileDrawer.jsx'
@@ -43,6 +44,8 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
   const [currentAdminId, setCurrentAdminId] = useState(null)
@@ -71,8 +74,9 @@ export default function UsersPage() {
 
         setUsers(response.users)
         setPagination(response.pagination)
+        setLoadError('')
       } catch (err) {
-        if (isMounted) setErrorMessage(err.message)
+        if (isMounted) setLoadError(err.message || 'Unable to load users.')
       } finally {
         requestInFlight = false
         if (isMounted && initial) setIsLoading(false)
@@ -96,7 +100,7 @@ export default function UsersPage() {
       window.removeEventListener('focus', refreshVisibleUsers)
       document.removeEventListener('visibilitychange', refreshVisibleUsers)
     }
-  }, [searchTerm, selectedRole, currentPage])
+  }, [searchTerm, selectedRole, currentPage, retryKey])
 
   useEffect(() => {
     getCurrentAdmin()
@@ -273,6 +277,8 @@ export default function UsersPage() {
 
         {isLoading ? (
           <section className="users-table-card users-loading-card">Loading users...</section>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => setRetryKey((key) => key + 1)} />
         ) : (
           <UsersTable
             currentAdminId={currentAdminId}

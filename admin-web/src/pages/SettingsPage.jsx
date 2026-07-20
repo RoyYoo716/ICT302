@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 import AccountProfileCard from '../components/settings/AccountProfileCard.jsx'
 import PasswordSecurityCard from '../components/settings/PasswordSecurityCard.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 import {
   getAdminSettings,
   logoutAdmin,
@@ -14,6 +15,8 @@ export default function SettingsPage() {
   const passwordTimerRef = useRef(null)
   const [settings, setSettings] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const [profileMessage, setProfileMessage] = useState('')
   const [passwordMessage, setPasswordMessage] = useState('')
 
@@ -26,14 +29,23 @@ export default function SettingsPage() {
     let isMounted = true
 
     async function loadSettings() {
-      const response = await getAdminSettings()
+      setIsLoading(true)
+      setLoadError('')
+      try {
+        const response = await getAdminSettings()
 
-      if (!isMounted) {
-        return
+        if (!isMounted) {
+          return
+        }
+
+        setSettings(response.settings)
+      } catch (apiError) {
+        if (isMounted) {
+          setLoadError(apiError.message || 'Unable to load settings.')
+        }
+      } finally {
+        if (isMounted) setIsLoading(false)
       }
-
-      setSettings(response.settings)
-      setIsLoading(false)
     }
 
     loadSettings()
@@ -42,7 +54,7 @@ export default function SettingsPage() {
       isMounted = false
       clearMessageTimers()
     }
-  }, [])
+  }, [retryKey])
 
   function showTimedMessage(timerRef, setter, message) {
     setter(message)
@@ -80,8 +92,12 @@ export default function SettingsPage() {
   return (
     <AdminLayout activeSection="settings" title="Settings">
       <main className="settings-page">
-        {isLoading || !settings ? (
+        {isLoading ? (
           <section className="settings-card settings-loading-card">Loading settings...</section>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => setRetryKey((key) => key + 1)} />
+        ) : !settings ? (
+          <ErrorState onRetry={() => setRetryKey((key) => key + 1)} />
         ) : (
           <div className="settings-stack">
             <AccountProfileCard

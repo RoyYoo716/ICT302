@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import AlertDetailModal from '../components/alerts/AlertDetailModal.jsx'
 import AlertsTable from '../components/alerts/AlertsTable.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 import { getAlerts, updateAlertStatus } from '../services/api.js'
 
 const PAGE_SIZE = 7
@@ -19,8 +20,9 @@ export default function AlertsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [alerts, setAlerts] = useState([])
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
-  const [globalNewCount, setGlobalNewCount] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [isSavingAlert, setIsSavingAlert] = useState(false)
 
@@ -31,33 +33,29 @@ export default function AlertsPage() {
     let isMounted = true
     async function loadAlerts() {
       setIsLoading(true)
-      const response = await getAlerts({
-        status: selectedStatus,
-        page: currentPage,
-        limit: PAGE_SIZE,
-      })
-      if (!isMounted) return
-      setAlerts(response.alerts)
-      setPagination(response.pagination)
-      setIsLoading(false)
+      setLoadError('')
+      try {
+        const response = await getAlerts({
+          status: selectedStatus,
+          page: currentPage,
+          limit: PAGE_SIZE,
+        })
+        if (!isMounted) return
+        setAlerts(response.alerts)
+        setPagination(response.pagination)
+      } catch (apiError) {
+        if (isMounted) {
+          setLoadError(apiError.message || 'Unable to load alerts.')
+        }
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
     }
     loadAlerts()
     return () => {
       isMounted = false
     }
-  }, [selectedStatus, currentPage])
-
-  // Global count of New alerts for the sidebar badge — the list above
-  // only knows the current page, so ask the server for the true total.
-  useEffect(() => {
-    let isMounted = true
-    getAlerts({ status: 'New', page: 1, limit: 1 }).then((res) => {
-      if (isMounted) setGlobalNewCount(res.pagination.total)
-    })
-    return () => {
-      isMounted = false
-    }
-  }, [alerts]) // refresh after any list change (e.g. resolving an alert)
+  }, [selectedStatus, currentPage, retryKey])
 
   const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -78,12 +76,13 @@ export default function AlertsPage() {
       return
     }
 
-    handleViewDetails(alertId)
+    const found = alerts.find((alert) => alert.id === alertId)
+    if (found) setSelectedAlert(found)
     navigate(`${location.pathname}${location.search}`, {
       replace: true,
       state: null,
     })
-  }, [isLoading, location, navigate])
+  }, [alerts, isLoading, location, navigate])
 
   function updateQuery(updates) {
     const nextParams = new URLSearchParams(searchParams)
@@ -132,17 +131,15 @@ export default function AlertsPage() {
         ),
       )
       setSelectedAlert(null)
+      setRetryKey((key) => key + 1)
+      window.dispatchEvent(new Event('vafpqr:alerts-changed'))
     } finally {
       setIsSavingAlert(false)
     }
   }
 
   return (
-    <AdminLayout
-      activeSection="alerts"
-      alertNotifications={globalNewCount === null ? null : Array.from({ length: globalNewCount })}
-      title="Tamper Alerts"
-    >
+    <AdminLayout activeSection="alerts" title="Tamper Alerts">
       <main className="alerts-page">
         <div className="alerts-toolbar">
           <label className="alerts-status-filter">
@@ -161,6 +158,8 @@ export default function AlertsPage() {
           <section className="alerts-table-card alerts-loading-card">
             Loading alerts...
           </section>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => setRetryKey((key) => key + 1)} />
         ) : (
           <AlertsTable
             alerts={pagedAlerts}
