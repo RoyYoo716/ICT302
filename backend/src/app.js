@@ -25,8 +25,6 @@ try {
     res.send('Server is healthy');
   });
 
-  // Only bind the port if running directly, or keep your existing structure
-  // (Render runs via `node src/app.js` based on your logs, so keeping app.listen here works fine)
   if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, () => {
       console.log(`Server running successfully on port ${PORT}`);
@@ -45,19 +43,16 @@ app.use('/api/scans', verifySecuritySession, require('./routes/scan'));
 app.use('/api/alert', verifySecuritySession, require('./routes/alert'));
 app.use('/api/admin', verifySecuritySession, require('./routes/admin'));
 
-// Static: Landing Page (Vite build copied into backend/landing-dist at deploy).
-// Browser users arrive here via the redirect from GET /api/qr/verify.
+// Static: Landing Page and Admin Frontend (pointing to root-level admin-web/dist)
 app.use('/landing', express.static(path.join(__dirname, '../landing-dist')));
-app.use(express.static(path.join(__dirname, '../admin-dist')));
+app.use(express.static(path.join(__dirname, '../../admin-web/dist')));
 
-// SPA fallback: any non-API, non-file route serves the admin app's
-// index.html so react-router deep links survive a page refresh.
-// (Middleware instead of app.get('*') — Express 5 changed wildcard syntax.)
+// SPA fallback: serve index.html for non-API, non-landing routes
 app.use((req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/landing')) {
     return next(); // let API 404s stay API 404s
   }
-  res.sendFile(path.join(__dirname, '../admin-dist/index.html'));
+  res.sendFile(path.join(__dirname, '../../admin-web/dist/index.html'));
 });
 
 module.exports = app;
