@@ -110,7 +110,11 @@ export default function QRCodeDetailPage() {
               </div>
               <div>
                 <dt>Created By</dt>
-                <dd></dd>
+                <dd>
+                  {qrCode.createdBy
+                    ? `${qrCode.createdBy.fullName || 'Unknown admin'} (${qrCode.createdBy.email})`
+                    : 'Unknown'}
+                </dd>
               </div>
               <div>
                 <dt>Total Scans</dt>

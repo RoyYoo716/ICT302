@@ -4,7 +4,7 @@ import AlertDetailModal from '../components/alerts/AlertDetailModal.jsx'
 import AlertsTable from '../components/alerts/AlertsTable.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 import ErrorState from '../components/ui/ErrorState.jsx'
-import { getAlerts, updateAlertStatus } from '../services/api.js'
+import { getAlerts, resolveAlert } from '../services/api.js'
 
 const PAGE_SIZE = 7
 const STATUS_OPTIONS = ['All', 'New', 'Resolved']
@@ -116,14 +116,11 @@ export default function AlertsPage() {
     navigate(`/qr-codes/${qrCodeId}`)
   }
 
-  async function handleAlertStatusUpdate(status, adminNotes) {
+  async function handleResolveAlert() {
     setIsSavingAlert(true)
 
     try {
-      const response = await updateAlertStatus(selectedAlert.id, {
-        status,
-        adminNotes,
-      })
+      const response = await resolveAlert(selectedAlert.id)
 
       setAlerts((currentAlerts) =>
         currentAlerts.map((alert) =>
@@ -179,7 +176,7 @@ export default function AlertsPage() {
             isSaving={isSavingAlert}
             onClose={handleCloseModal}
             onOpenQRCode={handleOpenQRCode}
-            onStatusUpdate={handleAlertStatusUpdate}
+            onResolve={handleResolveAlert}
           />
         ) : null}
       </main>

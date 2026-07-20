@@ -105,7 +105,7 @@ Rules (all implemented):
 - **User**: id, email, passwordHash, fullName, phoneNumber?, role (`user`/`admin`), **authVersion**, resetToken?, resetTokenExpiresAt?, **lastLogin?**, createdAt
 - **ScanLog**: id, **qrCodeId? (optional — tampered/unknown-token scans have no parent QR)**, **userId? (authenticated mobile owner)**, scannedAt, ipAddress, userAgent, gpsLat, gpsLng, result
 - **Alert**: id, qrCodeId, **reportedById? → User**, reporterName?, contactInfo?, gpsLat, gpsLng, photoUrl, description, status (`new`/`resolved`), createdAt
-- **ActivityLog**: id, qrCodeId?, type, message, status?, createdAt — feeds Recent Activity. **Four event types: `status_changed`, `alert_created`, `alert_resolved`, `alert_reopened`.**
+- **ActivityLog**: id, qrCodeId?, type, message, status?, createdAt — feeds Recent Activity. New records use `status_changed`, `alert_created`, or `alert_resolved`; historical `alert_reopened` records remain read-only.
 
 Schema decisions (documented with rationale — do not revisit):
 - Rejected: `ScanLog.qrCodeId NOT NULL` (breaks tampered-scan logging), `photo bytea` (conflicts with Supabase Storage), `User.status` / suspend-restore (needs auth middleware changes — deferred to `future-work.md`), `User.organisationId` and `ActivityLog.ipAddress` (removed as unused).
@@ -130,9 +130,9 @@ Schema decisions (documented with rationale — do not revisit):
 - `POST /api/qr/generate` — sign QR-JWT → record with label, status `active`, `createdById = req.user.userId` → base64 PNG of the verify URL
 - `GET /api/admin/qrcodes?search=&status=&page=` — server-side search/filter/pagination + summary counts
 - `GET /api/admin/qrcodes/export` — CSV (frontend uses raw `fetch` blob download, bypassing the JSON helper)
-- `GET /api/admin/qrcodes/:id` — detail pop-up: label, scan history, alerts, PNG regenerated on the fly
+- `GET /api/admin/qrcodes/:id` — detail pop-up: label, creator name/email, scan history, alerts, PNG regenerated on the fly
 - `PATCH /api/admin/qrcodes/:id` — status update → ActivityLog `status_changed`
-- `GET /api/admin/alerts?status=&page=` · `PATCH /api/admin/alerts/:id` — resolve **and reopen** → ActivityLog
+- `GET /api/admin/alerts?status=&page=` · `PATCH /api/admin/alerts/:id` — New → Resolved only → ActivityLog; reopen requests are rejected
 - `GET /api/admin/users?search=&page=` · `POST /api/admin/users` (admin adds a user) · `PATCH /api/admin/users/:id` (role change, last-admin guard, no self-change) · `DELETE /api/admin/users/:id` — deletion uses a Prisma **`$transaction`** to null `QrCode.createdById` FKs first; **admins must be demoted to user before deletion** (implicitly protects the last admin)
 - `GET /api/admin/metrics` — stat cards; **scanVolume in four ranges via rolling-window `buildBuckets`**: `1h` (12×5min), `24h` (12×2h), `1w` (7×1day), `1M` (10×3day); status donut; badge counts. Frontend adapter converts buckets to chart shapes with **browser-timezone labels**. Delta % intentionally omitted from MetricCards.
 - `GET /api/admin/activity?page=` — Recent Activity feed
@@ -144,7 +144,7 @@ Schema decisions (documented with rationale — do not revisit):
 - Admin session contract: store `{ token, admin }` in tab-scoped `sessionStorage`; backend login returns `{ token, user: { id, fullName, email, role } }` — **map `user` → `admin`**. Separate tabs may sign in as different administrators; closing a tab ends that tab's session.
 - `AdminLayout` revalidates `/api/auth/me` on entry, window focus, visibility return, and every 10 seconds. The Users page refreshes its list on the same focus/10-second cadence so role changes made by another administrator appear without a manual reload.
 - Route guards: `RequireAuth` component gates all dashboard routes; auth pages include Sign in, Register, **Forgot Password, Reset Password**.
-- Pages, all on real API: **Dashboard** (stat cards, 4-tab scan volume chart, status donut, Recent Activity), **QR Codes** (server-side search/filter/pagination, generate form with label, CSV export, detail pop-up with Label row; first table column widened to 220px), **Alerts** (photo evidence, GPS formatting, status filter, resolve/reopen; IDs displayed as `alert.id.slice(0, 8)` and `alert.qrLabel || alert.qrCodeId`), **Users** (search, add, role change, delete), **Settings** (profile edit + password change).
+- Pages, all on real API: **Dashboard** (stat cards, 4-tab scan volume chart, status donut, Recent Activity), **QR Codes** (server-side search/filter/pagination, generate form with label, CSV export, detail view with Label and Created By rows; first table column widened to 220px), **Alerts** (photo evidence, GPS formatting, status filter, resolve-only; IDs displayed as `alert.id.slice(0, 8)` and `alert.qrLabel || alert.qrCodeId`), **Users** (search, add, role change, delete), **Settings** (profile edit + password change).
 - Global alert badge count reflects the backend's complete unresolved-alert count, while the notification menu shows the newest real alerts and refreshes on focus/every 10 seconds.
 - Dashboard, QR Codes, Alerts, Users, and Settings show an API error state with a Retry action instead of remaining in a loading state indefinitely.
 - QR detail/status responses preserve the database scan and alert totals, and Alert status responses preserve the related QR information.

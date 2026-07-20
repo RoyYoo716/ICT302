@@ -130,6 +130,7 @@ router.get('/qrcodes/:id', async (req, res) => {
       include: {
         ScanLog: { orderBy: { scannedAt: 'desc' }, take: 50 },
         Alert: { orderBy: { createdAt: 'desc' } },
+        createdBy: { select: { id: true, fullName: true, email: true } },
         _count: { select: { ScanLog: true, Alert: true } },
       },
     });
@@ -150,6 +151,7 @@ router.get('/qrcodes/:id', async (req, res) => {
       createdAt: qr.createdAt,
       scanCount: qr._count.ScanLog,
       alertCount: qr._count.Alert,
+      createdBy: qr.createdBy,
       scanHistory: qr.ScanLog,
       alerts: qr.Alert,
       qrImage,
@@ -254,24 +256,26 @@ router.get('/alerts', async (req, res) => {
 });
 
 // --- PATCH /api/admin/alerts/:id ---
-// Resolve (or reopen) an alert, then write an ActivityLog entry.
+// Resolve a new alert, then write an ActivityLog entry.
 router.patch('/alerts/:id', async (req, res) => {
   try {
     const { status } = req.body;
-    const allowed = ['new', 'resolved'];
 
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+    if (status !== 'resolved') {
+      return res.status(400).json({ error: 'Only resolving alerts is supported' });
     }
 
     const existing = await prisma.alert.findUnique({ where: { id: req.params.id } });
     if (!existing) {
       return res.status(404).json({ error: 'Alert not found' });
     }
+    if (existing.status !== 'new') {
+      return res.status(400).json({ error: 'Only new alerts can be resolved' });
+    }
 
     const alert = await prisma.alert.update({
       where: { id: req.params.id },
-      data: { status },
+      data: { status: 'resolved' },
       include: {
         QrCode: { select: { id: true, label: true, destinationUrl: true, status: true } },
       },
@@ -280,9 +284,9 @@ router.patch('/alerts/:id', async (req, res) => {
     await prisma.activityLog.create({
       data: {
         qrCodeId: alert.qrCodeId,
-        type: status === 'resolved' ? 'alert_resolved' : 'alert_reopened',
-        message: `Alert ${alert.id} marked as ${status}`,
-        status,
+        type: 'alert_resolved',
+        message: `Alert ${alert.id} marked as resolved`,
+        status: 'resolved',
       },
     });
 

@@ -141,6 +141,7 @@ const ACTIVITY_TONES = {
   status_changed: 'warning',
   alert_created: 'danger',
   alert_resolved: 'info',
+  // Preserve the display tone for historical records; reopening is no longer allowed.
   alert_reopened: 'danger',
 }
 
@@ -178,6 +179,13 @@ function adaptQRCode(qr) {
     alerts: qr.alertCount ?? 0,
     creationDate: creates ? creates.toISOString().slice(0, 10) : '',
     createdAt: qr.createdAt,
+    createdBy: qr.createdBy
+      ? {
+          id: qr.createdBy.id,
+          fullName: qr.createdBy.fullName || '',
+          email: qr.createdBy.email || '',
+        }
+      : null,
   }
 }
 
@@ -203,7 +211,6 @@ function adaptAlert(a) {
     description: a.description,
     status: capitalize(a.status),
     submittedAt: a.createdAt ? new Date(a.createdAt).toLocaleString() : '',
-    adminNotes: '', // not a backend feature — kept so the modal doesn't break
     evidencePhotoUrl: a.photoUrl || '',
     evidencePhotoFileName: a.photoUrl ? a.photoUrl.split('/').pop() : '',
   }
@@ -484,12 +491,11 @@ export async function getAlerts({ status = 'All', page = 1, limit = 7 } = {}) {
   }
 }
 
-// PATCH /api/admin/alerts/:id — resolve or reopen.
-export async function updateAlertStatus(id, payload) {
-  const status = (typeof payload === 'string' ? payload : payload?.status || '')
+// PATCH /api/admin/alerts/:id — resolve a New alert.
+export async function resolveAlert(id) {
   const response = await request(`/admin/alerts/${id}`, {
     method: 'PATCH',
-    body: { status: status.toLowerCase() },
+    body: { status: 'resolved' },
   })
   return {
     alert: adaptAlert(response.alert),

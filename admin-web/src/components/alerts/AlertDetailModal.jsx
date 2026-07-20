@@ -52,7 +52,7 @@ export default function AlertDetailModal({
   isSaving,
   onClose,
   onOpenQRCode,
-  onStatusUpdate,
+  onResolve,
 }) {
   const [error, setError] = useState('')
 
@@ -63,7 +63,7 @@ export default function AlertDetailModal({
   async function handleResolveAlert() {
     setError('')
     try {
-      await onStatusUpdate('Resolved', '')
+      await onResolve()
     } catch (err) {
       setError(err.message || 'Failed to resolve the alert.')
     }
@@ -154,14 +154,16 @@ export default function AlertDetailModal({
         {error ? <p className="alert-modal-error">{error}</p> : null}
 
         <footer className="alert-modal-footer">
-          <button
-            className="alert-modal-resolve"
-            disabled={isSaving}
-            onClick={handleResolveAlert}
-            type="button"
-          >
-            Resolve Alert
-          </button>
+          {alert.status === 'New' ? (
+            <button
+              className="alert-modal-resolve"
+              disabled={isSaving}
+              onClick={handleResolveAlert}
+              type="button"
+            >
+              Resolve Alert
+            </button>
+          ) : null}
           <button
             className="alert-modal-secondary"
             disabled={isSaving}
