@@ -21,10 +21,6 @@ try {
   console.log("Initializing Express app...");
   const PORT = process.env.PORT || 3000;
 
-  app.get('/', (req, res) => {
-    res.send('Server is healthy');
-  });
-
   if (process.env.NODE_ENV !== 'test') {
     app.listen(PORT, () => {
       console.log(`Server running successfully on port ${PORT}`);
