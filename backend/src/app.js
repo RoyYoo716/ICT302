@@ -20,13 +20,10 @@ const express = require('express');
 
 try {
   console.log("Initializing Express app...");
-  const app = express();
   const PORT = process.env.PORT || 3000;
 
   app.use(express.json());
 
-  // Safe import test for routes and middleware
-  const { verifySecuritySession } = require('./middleware/SecurityAuth');
 
   app.get('/', (req, res) => {
     res.send('Server is healthy');
