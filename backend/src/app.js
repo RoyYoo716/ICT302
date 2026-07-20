@@ -34,7 +34,7 @@ app.use((req, res, next) => {
   res.sendFile(path.join(__dirname, '../../admin-web/dist/index.html'));
 });
 
-// Server listener (Missing from previous version, causing app to exit early without starting)
+// Server listener
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
