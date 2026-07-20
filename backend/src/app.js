@@ -1,8 +1,11 @@
 // app.js — Assembles the Express app (does not open the port yet).
 
+require('dotenv/config');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+
+const app = express();
 
 const { verifySecuritySession } = require('./middleware/SecurityAuth');
 
@@ -14,31 +17,26 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Secure QR backend is running' });
 });
 
-require('dotenv/config');
-const express = require('express');
-
 try {
   console.log("Initializing Express app...");
   const PORT = process.env.PORT || 3000;
-
-  app.use(express.json());
-
 
   app.get('/', (req, res) => {
     res.send('Server is healthy');
   });
 
-  app.listen(PORT, () => {
-    console.log(`Server running successfully on port ${PORT}`);
-  });
+  // Only bind the port if running directly, or keep your existing structure
+  // (Render runs via `node src/app.js` based on your logs, so keeping app.listen here works fine)
+  if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+      console.log(`Server running successfully on port ${PORT}`);
+    });
+  }
 
 } catch (err) {
   console.error("FATAL STARTUP EXCEPTION:", err);
   process.exit(1);
 }
-
-
-
 
 // Feature routes
 app.use('/api/auth', require('./routes/auth'));
