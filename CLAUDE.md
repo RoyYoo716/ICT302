@@ -147,7 +147,7 @@ Schema decisions (documented with rationale — do not revisit):
 - Pages, all on real API: **Dashboard** (stat cards, 4-tab scan volume chart, status donut, Recent Activity), **QR Codes** (server-side search/filter/pagination, generate form with label, CSV export, detail pop-up with Label row; first table column widened to 220px), **Alerts** (photo evidence, GPS formatting, status filter, resolve/reopen; IDs displayed as `alert.id.slice(0, 8)` and `alert.qrLabel || alert.qrCodeId`), **Users** (search, add, role change, delete), **Settings** (profile edit + password change).
 - Global alert badge count reflects the backend's complete unresolved-alert count, while the notification menu shows the newest real alerts and refreshes on focus/every 10 seconds.
 - Dashboard, QR Codes, Alerts, Users, and Settings show an API error state with a Retry action instead of remaining in a loading state indefinitely.
-- QR detail/status responses preserve the database scan and alert totals. Alert status responses preserve the related QR information, and resolved alerts can be reopened from the detail modal.
+- QR detail/status responses preserve the database scan and alert totals, and Alert status responses preserve the related QR information.
 - Dead mock code removed (`handleMarkReviewed`, `adminNotes`, `NotificationsCard`, `ResetPasswordModal`, `UserFormModal`-era leftovers, etc.).
 - Landing Page (`landing-web`): reads `status` / `reason` / `apk` query params only and renders distinct `valid`, `expired`, `invalid`, `suspicious`, and `blacklisted` results; three-state popup (`null` / `'coming-soon'` / `'app-required'`); design tokens: blue `#2563eb`, 14–18px radius, soft shadows.
 

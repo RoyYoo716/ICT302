@@ -60,14 +60,12 @@ export default function AlertDetailModal({
     setError('')
   }, [alert])
 
-  const isResolved = alert.status === 'Resolved'
-
-  async function handleStatusUpdate() {
+  async function handleResolveAlert() {
     setError('')
     try {
-      await onStatusUpdate(isResolved ? 'New' : 'Resolved', '')
+      await onStatusUpdate('Resolved', '')
     } catch (err) {
-      setError(err.message || `Failed to ${isResolved ? 'reopen' : 'resolve'} the alert.`)
+      setError(err.message || 'Failed to resolve the alert.')
     }
   }
 
@@ -159,10 +157,10 @@ export default function AlertDetailModal({
           <button
             className="alert-modal-resolve"
             disabled={isSaving}
-            onClick={handleStatusUpdate}
+            onClick={handleResolveAlert}
             type="button"
           >
-            {isResolved ? 'Reopen Alert' : 'Resolve Alert'}
+            Resolve Alert
           </button>
           <button
             className="alert-modal-secondary"
