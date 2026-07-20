@@ -3,7 +3,7 @@ const { supabaseServer } = require('../config/SupabaseServerClient');
 const verifySecuritySession = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No authorization header provided' });
     }
 
