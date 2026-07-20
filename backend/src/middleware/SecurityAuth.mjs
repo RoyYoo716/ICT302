@@ -1,22 +1,24 @@
-import { supabaseServer } from '../config/SupabaseServerClient.js';
+const { supabaseServer } = require('../config/SupabaseServerClient');
 
-export async function verifySecuritySession(req, res, next) {
+const verifySecuritySession = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Unauthorized: Missing security token." });
+    if (!authHeader) {
+      return res.status(401).json({ error: 'No authorization header provided' });
     }
 
     const token = authHeader.split(' ')[1];
-    
-    await supabaseServer.auth.setSession({
-      access_token: token,
-      refresh_token: ''
-    });
+    const { data: { user }, error } = await supabaseServer.auth.getUser(token);
 
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    req.user = user;
     next();
-  } catch (error) {
-    return res.status(401).json({ error: "Invalid security session context." });
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal server error during authentication' });
   }
-}
+};
+
+module.exports = { verifySecuritySession };
