@@ -19,7 +19,7 @@ const CAMERA_SETTINGS_MESSAGE = "Camera access is required. Open Android Setting
 export default function ReportRoute() {
   const params = useLocalSearchParams();
   const { user } = useAuth();
-  const [reporterName, setReporterName] = useState(user?.fullName ?? "");
+  const reporterName = user?.fullName ?? "";
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState(user?.email ?? "");
   const [location, setLocation] = useState(null);
@@ -191,13 +191,17 @@ export default function ReportRoute() {
       return;
     }
 
+    if (!evidencePhoto) {
+      setErrorMessage("An evidence photo is required before submitting a report.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       await submitTamperReport({
         qrCodeId,
         description: trimmedDescription,
-        reporterName: reporterName.trim(),
         contactInfo: contact.trim(),
         location: location
           ? {
@@ -342,11 +346,11 @@ export default function ReportRoute() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>OPTIONAL REPORTER NAME</Text>
+        <Text style={styles.label}>REPORTING AS</Text>
         <TextInput
           value={reporterName}
-          onChangeText={setReporterName}
-          placeholder="Your name (optional)"
+          editable={false}
+          placeholder="Signed-in user"
           placeholderTextColor="#275D9A"
           autoCapitalize="words"
           style={styles.contactInput}

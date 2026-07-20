@@ -8,13 +8,13 @@ import { BottomNav } from "../../src/components/layout/BottomNav";
 import { colors } from "../../src/constants/colors";
 import { spacing } from "../../src/constants/spacing";
 import { typography } from "../../src/constants/typography";
-import { getUserProfile } from "../../src/services/api";
-import { getScanHistory } from "../../src/services/scanHistory";
+import { getScanHistory, getUserProfile } from "../../src/services/api";
 import { formatRelativeScanTime, truncateMiddle } from "../../src/utils/formatters";
 
 export default function DashboardRoute() {
   const [profile, setProfile] = useState(null);
   const [history, setHistory] = useState([]);
+  const [summary, setSummary] = useState({ total: 0, safe: 0, blocked: 0 });
 
   useFocusEffect(
     useCallback(() => {
@@ -23,12 +23,13 @@ export default function DashboardRoute() {
       async function load() {
         const [userProfile, scans] = await Promise.all([
           getUserProfile(),
-          getScanHistory()
+          getScanHistory({ limit: 3 })
         ]);
 
         if (mounted) {
           setProfile(userProfile);
-          setHistory(scans);
+          setHistory(scans.history);
+          setSummary(scans.summary);
         }
       }
 
@@ -40,8 +41,6 @@ export default function DashboardRoute() {
     }, [])
   );
 
-  const safeCount = history.filter((item) => item.status === "safe").length;
-  const blockedCount = history.filter((item) => item.status === "blocked").length;
   const recent = history.slice(0, 3);
 
   return (
@@ -74,14 +73,13 @@ export default function DashboardRoute() {
           <View style={styles.statusTop}>
             <View style={styles.statusTitleRow}>
               <Feather name="shield" size={18} color={colors.green500} />
-              <Text style={styles.statusTitle}>Security Status</Text>
+              <Text style={styles.statusTitle}>Scan Summary</Text>
             </View>
-            <Text style={styles.activePill}>ACTIVE</Text>
           </View>
           <View style={styles.statsRow}>
-            <Stat value={history.length} label="Total Scans" />
-            <Stat value={safeCount} label="Safe" />
-            <Stat value={blockedCount} label="Blocked" />
+            <Stat value={summary.total} label="Total Scans" />
+            <Stat value={summary.safe} label="Safe" />
+            <Stat value={summary.blocked} label="Blocked" />
           </View>
         </View>
 
@@ -222,16 +220,6 @@ const styles = StyleSheet.create({
     color: colors.green300,
     fontSize: 14,
     lineHeight: 18,
-    fontWeight: "800"
-  },
-  activePill: {
-    color: "#54FFC8",
-    backgroundColor: "rgba(0,190,143,0.25)",
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    fontSize: 10,
-    lineHeight: 14,
     fontWeight: "800"
   },
   statsRow: {

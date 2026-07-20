@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import GenerateQRCodeModal from '../components/qr/GenerateQRCodeModal.jsx'
 import QRCodeGeneratedModal from '../components/qr/QRCodeGeneratedModal.jsx'
 import QRCodeTable from '../components/qr/QRCodeTable.jsx'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 import {
   exportQRCodesCsv,
   generateQRCode,
@@ -26,6 +27,8 @@ export default function QRCodeManagementPage() {
   const [qrCodes, setQRCodes] = useState([])
    const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const [isGenerateOpen, setIsGenerateOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -40,23 +43,31 @@ export default function QRCodeManagementPage() {
     let isMounted = true
     async function loadQRCodes() {
       setIsLoading(true)
-      // Server-side: the backend filters, searches, and pages for us.
-      const response = await getQRCodes({
-        search: searchTerm,
-        status: selectedStatus,
-        page: currentPage,
-        limit: PAGE_SIZE,
-      })
-      if (!isMounted) return
-      setQRCodes(response.qrCodes)
-      setPagination(response.pagination)
-      setIsLoading(false)
+      setLoadError('')
+      try {
+        // Server-side: the backend filters, searches, and pages for us.
+        const response = await getQRCodes({
+          search: searchTerm,
+          status: selectedStatus,
+          page: currentPage,
+          limit: PAGE_SIZE,
+        })
+        if (!isMounted) return
+        setQRCodes(response.qrCodes)
+        setPagination(response.pagination)
+      } catch (apiError) {
+        if (isMounted) {
+          setLoadError(apiError.message || 'Unable to load QR codes.')
+        }
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
     }
     loadQRCodes()
     return () => {
       isMounted = false
     }
-  }, [searchTerm, selectedStatus, currentPage])
+  }, [searchTerm, selectedStatus, currentPage, retryKey])
 
   const totalPages = pagination.totalPages || 1
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -207,6 +218,8 @@ export default function QRCodeManagementPage() {
 
         {isLoading ? (
           <section className="qr-table-card qr-loading-card">Loading QR codes...</section>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => setRetryKey((key) => key + 1)} />
         ) : (
           <QRCodeTable
             currentPage={safeCurrentPage}

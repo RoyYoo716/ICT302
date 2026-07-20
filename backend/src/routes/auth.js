@@ -67,7 +67,7 @@ router.post('/register', async (req, res) => {
 });
 
 // --- POST /api/auth/login ---
-// Verifies credentials and returns an auth JWT (userId, role).
+// Verifies credentials and returns an auth JWT (userId, authVersion).
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -76,7 +76,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'email and password are required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     // Use the same error for "no such user" and "wrong password" so an
     // attacker can't tell which emails are registered.
@@ -89,16 +90,35 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: { lastLogin: new Date() },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phoneNumber: true,
+        role: true,
+        authVersion: true,
+        lastLogin: true,
+      },
     });
 
-    const token = signAuthToken({ userId: user.id, role: user.role });
+    const token = signAuthToken({
+      userId: updatedUser.id,
+      authVersion: updatedUser.authVersion,
+    });
 
     res.json({
       token,
-      user: { id: user.id, fullName: user.fullName, email: user.email, phoneNumber: user.phoneNumber, role: user.role, lastlogin: user.lastLogin },
+      user: {
+        id: updatedUser.id,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        phoneNumber: updatedUser.phoneNumber,
+        role: updatedUser.role,
+        lastLogin: updatedUser.lastLogin,
+      },
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -176,7 +196,12 @@ router.post('/reset-password', async (req, res) => {
     // Set new password and clear the reset token so it can't be reused.
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiresAt: null,
+        authVersion: { increment: 1 },
+      },
     });
 
     res.json({ message: 'Password reset successful' });
@@ -184,6 +209,17 @@ router.post('/reset-password', async (req, res) => {
     console.error('Reset-password error:', err);
     res.status(500).json({ error: 'Reset failed' });
   }
+});
+
+// GET /api/auth/me — validate the saved token and return current DB profile.
+router.get('/me', requireAuth, async (req, res) => {
+  res.json({
+    id: req.user.userId,
+    fullName: req.user.fullName,
+    email: req.user.email,
+    phoneNumber: req.user.phoneNumber,
+    role: req.user.role,
+  });
 });
 
 // PATCH /api/auth/profile — update own fullName / phoneNumber.
@@ -240,7 +276,10 @@ router.patch('/password', requireAuth, async (req, res) => {
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        authVersion: { increment: 1 },
+      },
     });
 
     res.json({ message: 'Password changed successfully' });

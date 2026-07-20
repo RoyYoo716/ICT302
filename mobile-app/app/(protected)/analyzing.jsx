@@ -6,7 +6,6 @@ import { AppScreen } from "../../src/components/ui/AppScreen";
 import { colors } from "../../src/constants/colors";
 import { typography } from "../../src/constants/typography";
 import { verifyQRCode } from "../../src/services/api";
-import { saveScanHistoryRecord } from "../../src/services/scanHistory";
 
 const steps = [
   { label: "Contacting verification server...", doneAt: 40 },
@@ -42,17 +41,6 @@ export default function AnalyzingRoute() {
       const verification = await verifyQRCode({
         value: scannedValue
       });
-      if (!mounted) return;
-
-      try {
-        await saveScanHistoryRecord({
-          ...verification,
-          scannedValue,
-          source
-        });
-      } catch {
-        // Local history persistence should never block the scan result flow.
-      }
       if (!mounted) return;
 
       const routeParams = {

@@ -1,8 +1,4 @@
 const SESSION_KEY = 'vafpqr.admin.session'
-const REGISTERED_ADMINS_KEY = 'vafpqr.admin.registeredAdmins'
-const QR_CODES_KEY = 'vafpqr.admin.qrCodes'
-const ALERTS_KEY = 'vafpqr.admin.alerts'
-const USERS_KEY = 'vafpqr.admin.users'
 
 // ============================================================
 // Real backend plumbing — replaces the localStorage simulator
@@ -40,9 +36,15 @@ async function request(path, { method = 'GET', body, headers } = {}) {
   // are normal auth failures — let the backend's message surface instead
   // of hijacking them into a redirect.
   if (response.status === 401 && token) {
-    removeStorage(SESSION_KEY)
+    clearSession()
     window.location.assign('/login')
     throw new Error('Session expired. Please sign in again.')
+  }
+
+  if (response.status === 403 && token && data?.error === 'Admin access required') {
+    clearSession()
+    window.location.assign('/login')
+    throw new Error('Your admin access has changed. Please sign in again.')
   }
 
   if (!response.ok) {
@@ -139,6 +141,7 @@ const ACTIVITY_TONES = {
   status_changed: 'warning',
   alert_created: 'danger',
   alert_resolved: 'info',
+  // Preserve the display tone for historical records; reopening is no longer allowed.
   alert_reopened: 'danger',
 }
 
@@ -176,6 +179,13 @@ function adaptQRCode(qr) {
     alerts: qr.alertCount ?? 0,
     creationDate: creates ? creates.toISOString().slice(0, 10) : '',
     createdAt: qr.createdAt,
+    createdBy: qr.createdBy
+      ? {
+          id: qr.createdBy.id,
+          fullName: qr.createdBy.fullName || '',
+          email: qr.createdBy.email || '',
+        }
+      : null,
   }
 }
 
@@ -201,7 +211,6 @@ function adaptAlert(a) {
     description: a.description,
     status: capitalize(a.status),
     submittedAt: a.createdAt ? new Date(a.createdAt).toLocaleString() : '',
-    adminNotes: '', // not a backend feature — kept so the modal doesn't break
     evidencePhotoUrl: a.photoUrl || '',
     evidencePhotoFileName: a.photoUrl ? a.photoUrl.split('/').pop() : '',
   }
@@ -234,280 +243,55 @@ function adaptProfile(u) {
   }
 }
 
-function getStorage() {
-  return globalThis.localStorage || globalThis.window?.localStorage || null
-}
-
-function readStorage(key) {
-  const storage = getStorage()
-
-  if (!storage) {
-    return memoryStorage.get(key) || null
-  }
-
-  try {
-    return storage.getItem(key)
-  } catch {
-    return memoryStorage.get(key) || null
-  }
-}
-
-function writeStorage(key, value) {
-  const storage = getStorage()
-
-  if (!storage) {
-    memoryStorage.set(key, value)
-    return
-  }
-
-  try {
-    storage.setItem(key, value)
-  } catch {
-    memoryStorage.set(key, value)
-  }
-}
-
-function removeStorage(key) {
-  const storage = getStorage()
-
-  if (!storage) {
-    memoryStorage.delete(key)
-    return
-  }
-
-  try {
-    storage.removeItem(key)
-  } catch {
-    memoryStorage.delete(key)
-  }
-}
-
 function normalizeEmail(email) {
   return email.trim().toLowerCase()
 }
 
-function getStoredAdmins() {
+function getSessionStorage() {
+  return globalThis.sessionStorage || globalThis.window?.sessionStorage || null
+}
+
+function saveSession(session) {
+  const storage = getSessionStorage()
+  if (!storage) return
+
   try {
-    return JSON.parse(readStorage(REGISTERED_ADMINS_KEY)) || []
+    storage.setItem(SESSION_KEY, JSON.stringify(session))
   } catch {
-    return []
+    return
+  }
+
+  // Remove the former shared-tab session after the migration.
+  try {
+    globalThis.localStorage?.removeItem(SESSION_KEY)
+  } catch {
+    // The tab-scoped session is already saved; legacy cleanup is best-effort.
   }
 }
 
-function saveStoredAdmins(admins) {
-  writeStorage(REGISTERED_ADMINS_KEY, JSON.stringify(admins))
-}
-
-function saveSession(admin) {
-  writeStorage(SESSION_KEY, JSON.stringify(admin))
-}
-
 function readSession() {
+  const storage = getSessionStorage()
+  if (!storage) return null
+
   try {
-    return JSON.parse(readStorage(SESSION_KEY))
+    return JSON.parse(storage.getItem(SESSION_KEY))
   } catch {
     return null
   }
 }
 
-function toPublicAdmin(admin) {
-  return {
-    id: admin.id,
-    fullName: admin.fullName,
-    email: admin.email,
-    phone: admin.phone,
-    role: admin.role,
-  }
-}
-
-function hashString(value) {
-  let hash = 0
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index)
-    hash |= 0
-  }
-
-  return Math.abs(hash)
-}
-
-function isFinderArea(row, column, size) {
-  const inTop = row < 8
-  const inBottom = row >= size - 8
-  const inLeft = column < 8
-  const inRight = column >= size - 8
-
-  return (inTop && inLeft) || (inTop && inRight) || (inBottom && inLeft)
-}
-
-function shouldFillModule(row, column, hash) {
-  const value = row * 31 + column * 17 + hash
-  return value % 5 === 0 || value % 7 === 0 || value % 11 === 0
-}
-
-function drawFinder(ctx, x, y, moduleSize) {
-  ctx.fillStyle = '#1f2937'
-  ctx.fillRect(x, y, moduleSize * 7, moduleSize * 7)
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x + moduleSize, y + moduleSize, moduleSize * 5, moduleSize * 5)
-  ctx.fillStyle = '#1f2937'
-  ctx.fillRect(x + moduleSize * 2, y + moduleSize * 2, moduleSize * 3, moduleSize * 3)
-}
-
-function createSvgQrImage(seed) {
-  const size = 25
-  const moduleSize = 8
-  const padding = 12
-  const imageSize = size * moduleSize + padding * 2
-  const hash = hashString(seed)
-  const rects = []
-
-  for (let row = 0; row < size; row += 1) {
-    for (let column = 0; column < size; column += 1) {
-      if (!isFinderArea(row, column, size) && shouldFillModule(row, column, hash)) {
-        rects.push(
-          `<rect x="${padding + column * moduleSize}" y="${padding + row * moduleSize}" width="${moduleSize}" height="${moduleSize}" />`,
-        )
-      }
-    }
-  }
-
-  const finder = (x, y) => `
-    <rect x="${x}" y="${y}" width="${moduleSize * 7}" height="${moduleSize * 7}" />
-    <rect x="${x + moduleSize}" y="${y + moduleSize}" width="${moduleSize * 5}" height="${moduleSize * 5}" fill="#fff" />
-    <rect x="${x + moduleSize * 2}" y="${y + moduleSize * 2}" width="${moduleSize * 3}" height="${moduleSize * 3}" />
-  `
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${imageSize}" height="${imageSize}" viewBox="0 0 ${imageSize} ${imageSize}">
-    <rect width="100%" height="100%" fill="#fff" />
-    <g fill="#1f2937">
-      ${finder(padding, padding)}
-      ${finder(padding + moduleSize * 18, padding)}
-      ${finder(padding, padding + moduleSize * 18)}
-      ${rects.join('')}
-    </g>
-  </svg>`
-
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
-function createEvidencePhotoUrl(label) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320">
-    <defs>
-      <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
-        <stop offset="0%" stop-color="#dbeafe" />
-        <stop offset="100%" stop-color="#f8fafc" />
-      </linearGradient>
-    </defs>
-    <rect width="480" height="320" fill="url(#sky)" />
-    <rect x="72" y="54" width="336" height="212" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="5" />
-    <rect x="126" y="92" width="128" height="128" rx="8" fill="#111827" />
-    <rect x="142" y="108" width="96" height="96" rx="6" fill="#ffffff" />
-    <rect x="154" y="120" width="72" height="72" rx="4" fill="#111827" />
-    <rect x="278" y="104" width="76" height="14" rx="7" fill="#94a3b8" />
-    <rect x="278" y="134" width="86" height="14" rx="7" fill="#94a3b8" />
-    <rect x="278" y="164" width="58" height="14" rx="7" fill="#94a3b8" />
-    <rect x="96" y="238" width="288" height="18" rx="9" fill="#fee2e2" />
-    <text x="240" y="286" fill="#475569" font-family="Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle">${label} evidence photo</text>
-  </svg>`
-
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
-function getNewAlertCount(alerts) {
-  return alerts.filter((alert) => alert.status === 'New').length
-}
-
-function loadAlerts() {
+function clearSession() {
   try {
-    const storedAlerts = JSON.parse(readStorage(ALERTS_KEY))
-
-    if (Array.isArray(storedAlerts) && storedAlerts.length > 0) {
-      return storedAlerts.map(cloneAlert)
-    }
+    getSessionStorage()?.removeItem(SESSION_KEY)
   } catch {
-    // Fall back to seed data below.
+    // Redirect/logout must continue even if browser storage is unavailable.
   }
 
-  const initialAlerts = cloneAlerts(INITIAL_ALERTS)
-  saveAlerts(initialAlerts)
-  return initialAlerts
-}
-
-function saveAlerts(alerts) {
-  writeStorage(ALERTS_KEY, JSON.stringify(alerts))
-}
-
-function loadUsers() {
   try {
-    const storedUsers = JSON.parse(readStorage(USERS_KEY))
-
-    if (Array.isArray(storedUsers) && storedUsers.length > 0) {
-      return storedUsers
-    }
+    globalThis.localStorage?.removeItem(SESSION_KEY)
   } catch {
-    // Fall back to seed data below.
+    // Legacy cleanup is best-effort.
   }
-
-  const initialUsers = cloneUsers(INITIAL_USERS)
-  saveUsers(initialUsers)
-  return initialUsers
-}
-
-function saveUsers(users) {
-  writeStorage(USERS_KEY, JSON.stringify(users))
-}
-
-function getNextUserId(users) {
-  const nextNumber =
-    Math.max(
-      ...users.map((user) => {
-        const match = user.id.match(/USR-(\d+)/)
-        return match ? Number(match[1]) : 0
-      }),
-    ) + 1
-
-  return `USR-${String(nextNumber).padStart(3, '0')}`
-}
-
-function formatDate(date) {
-  const pad = (value) => String(value).padStart(2, '0')
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
-
-function escapeCsvValue(value) {
-  const text = String(value ?? '')
-  const escapedText = text.replace(/"/g, '""')
-
-  return /[",\r\n]/.test(escapedText) ? `"${escapedText}"` : escapedText
-}
-
-function buildCsv(headers, rows) {
-  return [
-    headers.map(escapeCsvValue).join(','),
-    ...rows.map((row) => row.map(escapeCsvValue).join(',')),
-  ].join('\r\n')
-}
-
-function createCsvBlob(csv) {
-  const BlobRef = globalThis.Blob || globalThis.window?.Blob
-
-  if (!BlobRef) {
-    throw new Error('CSV export is not supported in this browser.')
-  }
-
-  return new BlobRef([`\ufeff${csv}`], {
-    type: 'text/csv;charset=utf-8',
-  })
-}
-
-function formatDateTime(date) {
-  const pad = (value) => String(value).padStart(2, '0')
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`
 }
 
 // POST /api/auth/login — real backend call.
@@ -566,19 +350,22 @@ export async function resetPassword({ token, newPassword }) {
 // Purpose: clear the current admin session.
 // JWT is stateless — logging out is purely client-side.
 export async function logoutAdmin() {
-  removeStorage(SESSION_KEY)
+  clearSession()
   return { success: true }
 }
 
-// Provisional endpoint — to be confirmed with backend team.
-// GET /api/auth/me
-// Payload: none
-// Expected response: admin profile or null
-// Purpose: return the current authenticated admin profile.
-// Session restore: read the user saved at login. No server round-trip.
 export async function getCurrentAdmin() {
   const session = readSession()
-  return session?.admin ?? null
+  if (!session?.token) return null
+
+  const user = await request('/auth/me')
+  if (user.role !== 'admin') {
+    clearSession()
+    return null
+  }
+
+  saveSession({ ...session, admin: user })
+  return user
 }
 
 // Provisional endpoint — to be confirmed with backend team.
@@ -630,7 +417,7 @@ export async function getQRCodeById(id) {
   const qr = await request(`/admin/qrcodes/${id}`)
   return {
     qrCode: {
-      ...adaptQRCode({ ...qr, scanCount: qr.totalScans, alertCount: qr.alerts?.length ?? 0 }),
+      ...adaptQRCode(qr),
       qrImageUrl: qr.qrImage,     // backend regenerates the PNG on the fly
       scanHistory: qr.scanHistory, // available for later use (last 50 scans)
     },
@@ -700,17 +487,20 @@ export async function getAlerts({ status = 'All', page = 1, limit = 7 } = {}) {
   return {
     alerts: res.data.map(adaptAlert),
     pagination: res.pagination,
+    summary: res.summary,
   }
 }
 
-// PATCH /api/admin/alerts/:id — resolve or reopen.
-export async function updateAlertStatus(id, payload) {
-  const status = (typeof payload === 'string' ? payload : payload?.status || '')
-  const alert = await request(`/admin/alerts/${id}`, {
+// PATCH /api/admin/alerts/:id — resolve a New alert.
+export async function resolveAlert(id) {
+  const response = await request(`/admin/alerts/${id}`, {
     method: 'PATCH',
-    body: { status: status.toLowerCase() },
+    body: { status: 'resolved' },
   })
-  return { alert: adaptAlert(alert) }
+  return {
+    alert: adaptAlert(response.alert),
+    summary: response.summary,
+  }
 }
 
 // GET /api/admin/users — server-side search + role filter + pagination.

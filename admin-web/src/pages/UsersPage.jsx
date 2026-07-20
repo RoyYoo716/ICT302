@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 // import ResetPasswordModal from '../components/users/ResetPasswordModal.jsx'
 import UserFormModal from '../components/users/UserFormModal.jsx'
 import UserProfileDrawer from '../components/users/UserProfileDrawer.jsx'
@@ -10,6 +11,7 @@ import { getCurrentAdmin, getUsers, updateUser, createUser, deleteUser } from '.
 
 
 const PAGE_SIZE = 6
+const USERS_REFRESH_INTERVAL_MS = 10_000
 const ROLE_OPTIONS = ['All', 'Admin', 'User']
 //const STATUS_OPTIONS = ['All', 'Active', 'Suspended', 'Inactive']
 
@@ -42,6 +44,8 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1, limit: PAGE_SIZE })
   const [isAddUserOpen, setIsAddUserOpen] = useState(false)
   const [currentAdminId, setCurrentAdminId] = useState(null)
@@ -52,27 +56,58 @@ export default function UsersPage() {
 
   useEffect(() => {
     let isMounted = true
-    async function loadUsers() {
-      setIsLoading(true)
-      const response = await getUsers({
-        search: searchTerm,
-        role: selectedRole,
-        page: currentPage,
-        limit: PAGE_SIZE,
-      })
-      if (!isMounted) return
-      setUsers(response.users)
-      setPagination(response.pagination)
-      setIsLoading(false)
+    let requestInFlight = false
+
+    async function loadUsers({ initial = false } = {}) {
+      if (requestInFlight) return
+      requestInFlight = true
+      if (initial) setIsLoading(true)
+
+      try {
+        const response = await getUsers({
+          search: searchTerm,
+          role: selectedRole,
+          page: currentPage,
+          limit: PAGE_SIZE,
+        })
+        if (!isMounted) return
+
+        setUsers(response.users)
+        setPagination(response.pagination)
+        setLoadError('')
+      } catch (err) {
+        if (isMounted) setLoadError(err.message || 'Unable to load users.')
+      } finally {
+        requestInFlight = false
+        if (isMounted && initial) setIsLoading(false)
+      }
     }
-    loadUsers()
+
+    function refreshVisibleUsers() {
+      if (document.visibilityState === 'visible') {
+        loadUsers()
+      }
+    }
+
+    loadUsers({ initial: true })
+    const intervalId = window.setInterval(refreshVisibleUsers, USERS_REFRESH_INTERVAL_MS)
+    window.addEventListener('focus', refreshVisibleUsers)
+    document.addEventListener('visibilitychange', refreshVisibleUsers)
+
     return () => {
       isMounted = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', refreshVisibleUsers)
+      document.removeEventListener('visibilitychange', refreshVisibleUsers)
     }
-  }, [searchTerm, selectedRole, currentPage])
+  }, [searchTerm, selectedRole, currentPage, retryKey])
 
   useEffect(() => {
-    getCurrentAdmin().then((admin) => setCurrentAdminId(admin?.id ?? null))
+    getCurrentAdmin()
+      .then((admin) => setCurrentAdminId(admin?.id ?? null))
+      .catch(() => {
+        // AdminLayout owns session-error handling and redirects.
+      })
   }, [])
 
   const totalPages = pagination.totalPages || 1
@@ -242,6 +277,8 @@ export default function UsersPage() {
 
         {isLoading ? (
           <section className="users-table-card users-loading-card">Loading users...</section>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={() => setRetryKey((key) => key + 1)} />
         ) : (
           <UsersTable
             currentAdminId={currentAdminId}

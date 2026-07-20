@@ -9,11 +9,15 @@ import VerificationError from '../components/VerificationError.jsx'
 export default function QRVerificationPage() {
   const result = useMemo(() => {
     const params = new URLSearchParams(window.location.search)
-    if (!params.has('valid')) {
+    const status = params.get('status')?.toLowerCase()
+    const allowedStatuses = ['valid', 'expired', 'invalid', 'suspicious', 'blacklisted']
+
+    if (!allowedStatuses.includes(status)) {
       return null
     }
+
     return {
-      valid: params.get('valid') === 'true',
+      status,
       reason: params.get('reason'),
       apkUrl: params.get('apk'),
     }
@@ -29,7 +33,7 @@ export default function QRVerificationPage() {
 
   return (
     <main className="landing-shell" aria-live="polite">
-      {result.valid ? (
+      {result.status === 'valid' ? (
         <VerifiedResult result={result} />
       ) : (
         <InvalidResult result={result} />

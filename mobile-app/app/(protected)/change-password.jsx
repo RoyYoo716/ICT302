@@ -5,8 +5,10 @@ import Feather from "@expo/vector-icons/Feather";
 import { AppScreen } from "../../src/components/ui/AppScreen";
 import { colors } from "../../src/constants/colors";
 import { changePassword } from "../../src/services/api";
+import { useAuth } from "../../src/context/AuthContext";
 
 export default function ChangePasswordRoute() {
+  const { signOut } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -64,8 +66,9 @@ export default function ChangePasswordRoute() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      await signOut();
       Alert.alert("Change Password", response.message, [
-        { text: "OK", onPress: () => router.back() }
+        { text: "OK", onPress: () => router.replace("/(public)/login") }
       ]);
     } catch (apiError) {
       setError(apiError?.message || "Unable to update password. Please try again.");

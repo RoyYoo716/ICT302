@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import AdminLayout from '../components/layout/AdminLayout.jsx'
 import QRStatusBadge from '../components/qr/QRStatusBadge.jsx'
+import ErrorState from '../components/ui/ErrorState.jsx'
 import { getQRCodeById } from '../services/api.js'
 import { downloadQRCodeImage, printCurrentPage } from '../utils/qrCodeActions.js'
 
@@ -16,11 +17,14 @@ export default function QRCodeDetailPage() {
   const [qrCode, setQRCode] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     let isMounted = true
 
     async function loadQRCode() {
+      setIsLoading(true)
+      setError('')
       try {
         const response = await getQRCodeById(id)
 
@@ -45,7 +49,7 @@ export default function QRCodeDetailPage() {
     return () => {
       isMounted = false
     }
-  }, [id])
+  }, [id, retryKey])
 
   function handleBack() {
     navigate(location.state?.returnTo || '/qr-codes')
@@ -60,7 +64,7 @@ export default function QRCodeDetailPage() {
 
         {!isLoading && error ? (
           <section className="qr-detail-card">
-            <p className="qr-detail-error">{error}</p>
+            <ErrorState message={error} onRetry={() => setRetryKey((key) => key + 1)} />
             <button className="qr-primary-button" onClick={handleBack} type="button">
               Back
             </button>
@@ -106,7 +110,11 @@ export default function QRCodeDetailPage() {
               </div>
               <div>
                 <dt>Created By</dt>
-                <dd></dd>
+                <dd>
+                  {qrCode.createdBy
+                    ? `${qrCode.createdBy.fullName || 'Unknown admin'} (${qrCode.createdBy.email})`
+                    : 'Unknown'}
+                </dd>
               </div>
               <div>
                 <dt>Total Scans</dt>
