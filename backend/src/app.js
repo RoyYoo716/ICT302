@@ -15,6 +15,35 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Secure QR backend is running' });
 });
 
+require('dotenv/config');
+const express = require('express');
+
+try {
+  console.log("Initializing Express app...");
+  const app = express();
+  const PORT = process.env.PORT || 3000;
+
+  app.use(express.json());
+
+  // Safe import test for routes and middleware
+  const { verifySecuritySession } = require('./middleware/SecurityAuth');
+
+  app.get('/', (req, res) => {
+    res.send('Server is healthy');
+  });
+
+  app.listen(PORT, () => {
+    console.log(`Server running successfully on port ${PORT}`);
+  });
+
+} catch (err) {
+  console.error("FATAL STARTUP EXCEPTION:", err);
+  process.exit(1);
+}
+
+
+
+
 // Feature routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/qr', verifySecuritySession, require('./routes/qr'));
