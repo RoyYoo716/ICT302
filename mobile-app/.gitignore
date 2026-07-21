@@ -15,7 +15,8 @@ android/app/build/
 npm-debug.log
 
 .env
-.env.local
+.env.*
+!.env.example
 *.keystore
 *.jks
 

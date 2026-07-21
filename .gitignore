@@ -1,3 +1,45 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment files and secrets
 .env
-.env.local
+.env.*
+!.env.example
+!**/.env.example
+
+# Generated builds and caches
+dist/
+build/
+coverage/
+.expo/
+.gradle/
+.kotlin/
+
+# Mobile release and signing artifacts
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local AI/tool state and temporary work
+.claude/
+.agents/
+tmp/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.sw?
+
+# Microsoft Office lock files
+~$*.docx

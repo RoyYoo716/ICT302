@@ -1,259 +1,329 @@
-# CLAUDE.md — Secure QR Code Management System (ICT302)
+# CLAUDE.md - VAFPQR Secure QR Code Management System (ICT302)
 
-## Project Overview
+Master specification for Claude sessions. Last full rewrite: 22 July 2026.
+Every fact below was verified against the main branch or the baseline
+documents on 21-22 July 2026. See "Design Change Register v2.2" in the
+document folder context for the full PMP/Design/R&A deviation record.
 
-A Secure QR Code Management System that detects and responds to **physical QR code tampering** in public spaces. Built for the ICT302 unit (clients: Peter Cole, Mike Groeneweg). Group: VAFPQR.
+## 1. Project Overview
 
-**Current status (20 July 2026):**
+- Detects and responds to physical QR code tampering in public spaces.
+- Unit: ICT302. Clients: Peter Cole, Mike Groeneweg. Group: FT02 (VAFPQR).
+- Final submission: 1 August 2026. Client demo: 22 July 2026.
+- Sprint 5 system testing (Vanessa) runs 18-31 July.
+
+Status as of 22 July 2026:
 
 | Component | Status |
-|---|---|
-| Backend API (incl. auth, admin, metrics, activity, demo seed) | ✅ Complete & live on Render |
-| Landing page (`landing-web`) | ✅ Integrated & deployed (`/landing`) |
-| Admin dashboard (`admin-web`) — all 5 pages + auth pages on real API | ✅ Complete & deployed (SPA at `/`) |
-| Render deployment | ✅ Live: `https://ict302-b77o.onrender.com` |
-| Mobile app (`mobile-app`, Expo) | 🔄 In progress — Steps 1–6 implemented; Step 7 release preparation remaining |
-| Sprint 5 system testing (Vanessa, 18–31 July) | 🔄 In progress |
+| --- | --- |
+| Backend API | Complete, deployed on Render (main branch) |
+| Admin dashboard (admin-web) | Complete, connected to real API, served by Express |
+| Landing page (landing-web) | Complete, served at /landing |
+| Mobile app (mobile-app) | Complete, all mocks removed, APK released |
+| APK release | GitHub Releases tag mobile-v0.1.0, 20 July 2026 |
+| Remaining | Docs (User Manual, Install Guide, Final Report), baseline amendments, Sprint 5 support |
 
-**⏰ Hard deadline: client demo 22 July 2026. Final submission 1 August 2026.**
+## 2. Core Security Design (non-negotiable)
 
-**Core design philosophy (non-negotiable):**
-QR codes encode **plain HTTPS URLs only**. All security logic (JWT validation, expiry, blacklist, logging) lives **server-side**. This guarantees backward compatibility — any standard scanner (Apple/Google camera) must be able to scan our codes and open a real page.
+- QR codes encode plain HTTPS URLs only. All security logic (JWT
+  validation, expiry, blacklist, logging) lives server-side. Any standard
+  camera scanner can scan our codes and reach a real page.
+- App-required access model: browsers NEVER receive the destination URL.
+  A browser scan is redirected to /landing/?status=&reason=&apk= with the
+  verdict only. Reaching the destination requires the mobile app.
+  - PENDING ACTION: written client approval of this pivot must be located
+    or obtained (Design 6.5 recorded a contrary client preference).
+- Two verify endpoints (this replaced the old User-Agent branching):
+  - GET /api/qr/verify?token= : public forever, serves standard camera
+    scans, logs every attempt, redirects browsers to the landing page.
+    Never put auth middleware on it.
+  - POST /api/qr/verify/mobile : behind requireAuth, returns JSON to the
+    app, attributes the scan to the signed-in user (ScanLog.userId).
+- The User-Agent string is stored in ScanLog for telemetry only. It is
+  never used for authorisation (a UA header can be forged by anyone).
 
-**Access model (decided):** Reaching the destination URL **requires the mobile app**. Browser (regular scanner) users still get full server-side verification and a safe/tampered result display on the Landing Page, but there is **no "Continue to destination" path in the browser** — valid codes show an app-download CTA instead. Declining shows a pop-up explaining the app is required.
+## 3. Repository Structure
 
-## Architecture
+- GitHub: RoyYoo716/ICT302. Render deploys from main. Work happens on
+  feature branches, merged to main for deployment.
+- Folders at root: backend, admin-web, landing-web, landing-page-version-2,
+  mobile-app, document, plus CLAUDE.md, FRONTEND_TASKS.md, README.md.
+- KNOWN ISSUE (verified 22 July, still unfixed on main): the root
+  package.json was overwritten with the mobile app's package.json. It has
+  name "vafpqr-mobile-app", Expo dependencies at root, and a workspaces
+  list containing "app" instead of "mobile-app". Fix before final
+  submission: restore a proper monorepo root package.json.
+- landing-page-version-2 still exists at root; decide keep or delete
+  before submission.
 
-```
-[QR Code] → encodes → https://ict302-b77o.onrender.com/api/qr/verify?token=<QR-JWT>
-                                    │
-                     verify sig → expiry → blacklist → log scan (ALWAYS)
-                      ┌─────────────┴─────────────┐
-                      │                           │
-     Authenticated mobile POST              Public browser GET
-       /api/qr/verify/mobile                 /api/qr/verify?token=
-                      │                           │
-       user-linked ScanLog + JSON           302 → /landing/?status=&reason=&apk=
-       → in-app result screen               → verification result + app CTA
-       → destination reachable              → NO destination access
-       → authenticated report flow
-```
+## 4. Tech Stack (versions verified in package.json on main)
 
-Express serves everything from one Render service: API under `/api`, Landing Page (static build) under `/landing`, and the admin SPA at `/` with an Express-5-compatible SPA fallback (middleware pattern, **not** `app.get('*')`) so react-router deep links survive refresh.
+| Layer | Technology |
+| --- | --- |
+| Backend | Node.js, Express 5.2.1, Prisma 7 (prisma-client-js generator + @prisma/adapter-pg), jsonwebtoken, bcrypt, multer (memoryStorage only) |
+| Database | Supabase PostgreSQL via Prisma 7 |
+| File storage | Supabase Storage, public bucket "alert-photos", DB stores URL only |
+| Admin web | Vite, React 19.2.7, plain JSX (NOT TypeScript), Tailwind CSS v4, shadcn/ui (Radix), Recharts, react-router 7 |
+| Landing web | Vite, React 19.0 |
+| Mobile | Expo SDK 57, React Native 0.86, expo-router, expo-camera, expo-location, expo-image-picker, expo-secure-store, expo-file-system, expo-dev-client |
+| HTTP client | fetch everywhere. axios is NOT installed anywhere. |
+| Hosting | Render free tier, single service serves API + /landing + admin SPA |
 
-## Repository Structure (npm workspaces monorepo)
+- helmet is NOT installed even though the Design Document lists it.
+  Decision pending: install during Sprint 5 after the demo (verify CSP
+  compatibility with the two static builds first) or amend the document.
+- Express 5 note: the SPA fallback uses Express-5-compatible middleware,
+  not app.get("*").
 
-Repo: `RoyYoo716/ICT302` · Live: `https://ict302-b77o.onrender.com` · Supabase project ref: `tnxzfltaarebfgqpndbv`
+## 5. Supabase Connections (identify by hostname, never by port)
 
-| Folder | Purpose |
-|---|---|
-| `backend/` | Node.js + Express + Prisma 7 API (`src/routes`: auth, qr, alert, admin; `src/services`; `prisma/` with `seed-admin.js`, `seed-demo.js`) |
-| `landing-web/` | Landing Page (Vite + React JSX, teammate's Figma Make export, rewired) |
-| `admin-web/` | Admin dashboard (Vite + React JSX, Figma Make export, fully integrated) |
-| `mobile-app/` | Expo / React Native app (expo-router, teammate's scaffold, integration in progress) |
-| `landing-page-version-2/` | Teammate's alternate landing draft — **not wired into any build**; ignore unless adopted |
-| `FRONTEND_TASKS.md` | Frontend task tracking |
+- DATABASE_URL: Session pooler, host pooler.supabase.com, port 5432.
+  Used by the app at runtime.
+- DIRECT_URL: Direct connection, host db.<project-ref>.supabase.co,
+  port 5432. Used by Prisma migrations.
+- Transaction pooler (port 6543) is not used by this project.
+- Prisma 7: connection URLs live in prisma.config.ts, never in
+  schema.prisma (wrong placement throws P1012).
+- Never edit the Supabase schema through the Table Editor. All schema
+  changes go through Prisma (drift caused real failures before).
 
-Branches: `main` (Render deploy branch), `mobile-integration` (active mobile work), `frontend-integration` / `landing-integration` (merged into main), `royyoo`.
+## 6. Auth Model
 
-> ⚠️ **Known repo issue — fix before final submission:** the **root `package.json` was overwritten with the mobile app's package.json** (name `vafpqr-mobile-app`, Expo dependencies at root) while keeping a `workspaces` array that lists `"app"` — but the actual folder is `mobile-app`. Restore a clean root manifest: name it for the monorepo, remove the Expo deps (they belong in `mobile-app/package.json`, which already has them), and fix the workspaces list to `["backend", "landing-web", "admin-web", "mobile-app"]`.
+Two separate JWT types. Secrets are never interchanged.
 
-## Tech Stack (do not deviate)
+| | QR token | Auth token |
+| --- | --- | --- |
+| Lives in | printed QR codes (public) | login sessions (app + web) |
+| Secret | QR_JWT_SECRET | AUTH_JWT_SECRET |
+| Payload | qrCodeId, destinationUrl, exp | userId, role, exp |
 
-| Layer | Technology | Notes |
-|---|---|---|
-| Backend | Node.js, Express, Prisma ORM v7 (`prisma-client-js` generator + `@prisma/adapter-pg`), jsonwebtoken, bcrypt, multer | multer must use `memoryStorage` |
-| Database | Supabase PostgreSQL | See **Supabase Connections** — identify connection type by **hostname, never by port** |
-| File storage | Supabase Storage (bucket: `alert-photos`, public) | Alert photos only; DB stores the URL. Uploads require the `sb_secret_...` key |
-| Web frontend | **Vite + React 18.3.1 — plain JSX (NOT TypeScript)**, Tailwind CSS v4, shadcn/ui (Radix UI), Recharts, react-router 7 | Figma Make export. The old "TypeScript" claim in earlier CLAUDE.md versions was **wrong** — all files are `.jsx`. Build output is `dist/` (Vite) |
-| Mobile | **Expo (SDK 57) + expo-router**, React Native 0.86, expo-camera, expo-location, expo-secure-store, expo-image-picker | Android-first. Custom User-Agent `SecureQRApp/1.0` on ALL requests. APK via **EAS preview build → GitHub Releases** (no Play Store) |
-| Hosting | Render (single service serves API + landing + admin SPA) | Free tier — ephemeral disk, cold starts (see Demo checklist) |
+Rules:
 
-## Supabase Connections (verified — supersedes ALL older notes)
+- Registration is one single form: fullName (required), email (required),
+  phoneNumber (optional), password (required). There is NO role field.
+  Every new account is created as role "user".
+- The register endpoint returns the created user WITHOUT a session token.
+  The mobile app redirects to the login screen with a success banner; the
+  user signs in explicitly.
+- First admin is seeded from ADMIN_EMAIL / ADMIN_PASSWORD env vars.
+  Never hardcode credentials anywhere, including UI placeholder values.
+- Further admins are promoted via PATCH /api/admin/users/:id.
+- Server refuses to demote the last remaining admin (last-admin guard).
+- Self-role-change is blocked (backend 400 + disabled button).
+- Admins must be demoted to user before they can be deleted.
+- Password reset: single-use expiring token stored on the User row.
+  Channel-aware: admin accounts reset via web, regular users via the app.
+  Demo mode returns the reset link in the API response (no email service).
+- authVersion: a counter on the User row. Password change, password
+  reset, and role change increment it, revoking all previously issued
+  JWTs for that account.
+- HTTP 400 (not 401) for "current password incorrect", so the client does
+  not trigger a session-expiry redirect.
+- Middleware: requireAuth (valid auth JWT), requireAdmin (auth JWT plus
+  role admin). Client-side role routing is cosmetic; the middleware is
+  the real enforcement.
 
-- `DATABASE_URL` → **Session pooler**: `aws-0-<region>.pooler.supabase.com`, port **5432** — app runtime
-- `DIRECT_URL` → **Direct connection**: `db.<project-ref>.supabase.co`, port **5432** — Prisma migrations
-- Transaction pooler uses port **6543** (Supavisor removed session mode from 6543 on 28 Feb 2025) — not used by this project
-- **Distinguish connection types by hostname, not port.** The old "6543 = runtime pooler" rule is WRONG.
-- The Direct connection is IPv6-only and unreachable from typical local networks — locally, point both runtime and Prisma CLI at the Session pooler
-- Prisma 7: connection URLs live in `prisma.config.ts`, **not** `schema.prisma` (wrong placement → P1012)
+## 7. Database Schema (5 tables, live in Supabase)
 
-## Auth Model — TWO separate JWT types (never share secrets)
+- QrCode: id, token, label (optional), destinationUrl, status, expiresAt,
+  createdById (optional FK, cleared in a transaction on user deletion),
+  createdAt. Status values: active, suspicious, blacklisted, expired.
+- User: id, email (unique, the login ID), passwordHash, fullName,
+  phoneNumber (optional), role (user or admin, lowercase), authVersion,
+  resetToken, resetTokenExpiresAt, lastLogin, createdAt.
+- ScanLog: id, qrCodeId (OPTIONAL - forged or tampered tokens have no
+  parent QR, and the failed scan must still be logged as evidence),
+  userId (optional - the signed-in app user; basis of scan history;
+  indexed with scannedAt), scannedAt, ipAddress, userAgent, gpsLat,
+  gpsLng, result. Result values: valid, invalid, expired, blacklisted,
+  suspicious.
+- Alert: id, qrCodeId, reportedById (optional, onDelete SetNull so
+  reports survive account deletion, indexed with createdAt), reporterName
+  (optional), contactInfo (optional, up to 200 chars), gpsLat/gpsLng
+  (optional Float pair, validated as a pair), photoUrl (Supabase Storage
+  URL, never binary), description, status (new or resolved), createdAt.
+- ActivityLog: id, qrCodeId (optional), type, message, status, ipAddress,
+  createdAt. Curated events only: status_changed, alert_created,
+  alert_resolved. Feeds the Recent Activity panel.
 
-|  | QR Token | Auth Token |
-|---|---|---|
-| Purpose | lives inside printed QR codes (public) | login sessions (app + web) |
-| Secret | `QR_JWT_SECRET` | `AUTH_JWT_SECRET` |
-| Payload | qrCodeId, destinationUrl, exp | userId, authVersion, exp |
+Design principles:
 
-Rules (all implemented):
-- **Registration is one single form**: fullName (required — the field is `fullName`, never `name`), email (required), phoneNumber (optional), password (required). **No role field — every new account is role `user`.** Email format is validated on both frontend and backend, and emails are **lowercase-normalized** before storage/lookup.
-- **First admin** seeded from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (`prisma/seed-admin.js`). Never hardcode credentials — hardcoded demo credentials were removed from the live login screen (security fix).
-- Further admins promoted via Users page (`PATCH /api/admin/users/:id`). **Last-admin demotion guard** on the server. **Self-role-change is blocked** (backend 400 + frontend disabled button).
-- One shared login endpoint for app and web. The **frontend `loginAdmin` rejects non-admin roles** for web access; the backend endpoint stays open for mobile users. Real enforcement = `requireAdmin` middleware.
-- `User.lastLogin` is updated on every successful login (single `prisma.user.update` before `signAuthToken`).
-- Forgot/Reset password: single-use expiring reset token on the User row; **demo mode returns the reset link in the API response** (no email service).
-- Password change (`PATCH /api/auth/password`): wrong current password returns **HTTP 400, not 401** — a 401 would trigger the session-expiry redirect. Same-password reuse is rejected.
-- Frontend 401 handler must check **`&& token`**: 401 with a stored token = session expired (redirect); 401 without = bad credentials (show error inline).
-- `GET /api/qr/verify` stays **public forever** for standard camera/browser scans. The mobile app uses authenticated `POST /api/qr/verify/mobile`; never use User-Agent as authorization.
-- Auth middleware reloads the current user and `authVersion` from the database. Password changes, password resets, and role changes increment `authVersion`, invalidating every prior JWT for that account.
-- Custom auth (`public.User`, jsonwebtoken + bcrypt) — entirely separate from Supabase Auth. Do not migrate.
+- ScanLog is raw telemetry (every scan attempt, always). ActivityLog is
+  the curated event feed. Never merge them.
+- QR images are never stored. The PNG is regenerated on demand from the
+  stored token.
+- Every NOT NULL relaxation vs the Design Document serves auditability.
+  The mapping is documented in schema-reconciliation.md.
 
-## Database Schema (5 tables — live in Supabase; see `schema-reconciliation.md`)
+## 8. API Endpoints (verified inventory)
 
-- **QrCode**: id, token, label, destinationUrl, status (`active`/`blacklisted`/`suspicious`/`expired`), expiresAt, **createdById? → User (optional, audit trail only)**, createdAt
-- **User**: id, email, passwordHash, fullName, phoneNumber?, role (`user`/`admin`), **authVersion**, resetToken?, resetTokenExpiresAt?, **lastLogin?**, createdAt
-- **ScanLog**: id, **qrCodeId? (optional — tampered/unknown-token scans have no parent QR)**, **userId? (authenticated mobile owner)**, scannedAt, ipAddress, userAgent, gpsLat, gpsLng, result
-- **Alert**: id, qrCodeId, **reportedById? → User**, reporterName?, contactInfo?, gpsLat, gpsLng, photoUrl, description, status (`new`/`resolved`), createdAt
-- **ActivityLog**: id, qrCodeId?, type, message, status?, createdAt — feeds Recent Activity. New records use `status_changed`, `alert_created`, or `alert_resolved`; historical `alert_reopened` records remain read-only.
+Public (no auth):
+- GET /api/qr/verify?token= : verify, log, redirect browser to landing.
+- POST /api/alert/report : multipart. Photo max 5 MB, image MIME only.
+- GET /api/health : used to pre-warm the Render service before demos.
 
-Schema decisions (documented with rationale — do not revisit):
-- Rejected: `ScanLog.qrCodeId NOT NULL` (breaks tampered-scan logging), `photo bytea` (conflicts with Supabase Storage), `User.status` / suspend-restore (needs auth middleware changes — deferred to `future-work.md`), `User.organisationId` and `ActivityLog.ipAddress` (removed as unused).
-- ScanLog = raw telemetry (every scan, always); ActivityLog = curated feed events. Never merge them.
-- QR images are never stored — regenerate the PNG on demand from the stored token.
-- **Never edit the schema in the Supabase Table Editor** — it drifts from `db push` and Prisma. All schema changes go through `schema.prisma`.
+Auth:
+- POST /api/auth/register, POST /api/auth/login
+- POST /api/auth/forgot-password, POST /api/auth/reset-password
+- PATCH /api/auth/password, PATCH /api/auth/profile (requireAuth)
 
-## API Endpoints (all implemented & live)
+Mobile (requireAuth):
+- POST /api/qr/verify/mobile
+- GET /api/scans/history
 
-### Public (no auth)
-- `GET /api/health` — liveness check; also used to **pre-warm Render before demos**
-- `GET /api/qr/verify?token=` — validate signature → expiry → blacklist → **log every attempt to ScanLog** → browser `302 → /landing/?status=…&reason=…&apk=…` (the Landing Page makes **no API call** of its own — avoids double ScanLog)
+Admin (all behind requireAdmin):
+- POST /api/qr/generate : expiry accepted 1 to 8760 hours (UI dropdown
+  offers 24/48/72/168), optional label max 120 chars.
+- GET /api/admin/qrcodes (search over label + destinationUrl, pagination
+  default 20 max 100), GET /api/admin/qrcodes/:id,
+  GET /api/admin/qrcodes/export (CSV), PATCH /api/admin/qrcodes/:id
+- GET /api/admin/users, POST /api/admin/users (admin-created accounts),
+  PATCH /api/admin/users/:id, DELETE /api/admin/users/:id
+- GET /api/admin/alerts, PATCH /api/admin/alerts/:id (resolve only;
+  reopening is rejected)
+- GET /api/admin/metrics (6 stat cards incl. Total Alerts, 4 scan-volume
+  ranges 1h/24h/1w/1M, status donut; deltas computed but not displayed)
+- GET /api/admin/activity
 
-### Auth (shared by app and web)
-- `POST /api/auth/register` · `POST /api/auth/login` (updates lastLogin) · `POST /api/auth/forgot-password` · `POST /api/auth/reset-password`
-- `GET /api/auth/me` (requireAuth; validates the saved JWT against the current DB account and role)
-- `PATCH /api/auth/profile` (requireAuth — Settings: name/phone) · `PATCH /api/auth/password` (requireAuth; 400 on wrong current password)
-- `POST /api/qr/verify/mobile` (requireAuth; links each app scan to the signed-in user) · `GET /api/scans/history` (requireAuth; server-backed, user-scoped history and summary)
-- `POST /api/alert/report` (requireAuth) → required photo + description, validated optional GPS, reporter identity from the signed-in account → QR `suspicious` → ActivityLog `alert_created`
+## 9. QR Lifecycle Rules (enforced, tested)
 
-### Admin (ALL behind requireAdmin)
-- `POST /api/qr/generate` — sign QR-JWT → record with label, status `active`, `createdById = req.user.userId` → base64 PNG of the verify URL
-- `GET /api/admin/qrcodes?search=&status=&page=` — server-side search/filter/pagination + summary counts
-- `GET /api/admin/qrcodes/export` — CSV (frontend uses raw `fetch` blob download, bypassing the JSON helper)
-- `GET /api/admin/qrcodes/:id` — detail pop-up: label, creator name/email, scan history, alerts, PNG regenerated on the fly
-- `PATCH /api/admin/qrcodes/:id` — status update → ActivityLog `status_changed`
-- `GET /api/admin/alerts?status=&page=` · `PATCH /api/admin/alerts/:id` — New → Resolved only → ActivityLog; reopen requests are rejected
-- `GET /api/admin/users?search=&page=` · `POST /api/admin/users` (admin adds a user) · `PATCH /api/admin/users/:id` (role change, last-admin guard, no self-change) · `DELETE /api/admin/users/:id` — deletion uses a Prisma **`$transaction`** to null `QrCode.createdById` FKs first; **admins must be demoted to user before deletion** (implicitly protects the last admin)
-- `GET /api/admin/metrics` — stat cards; **scanVolume in four ranges via rolling-window `buildBuckets`**: `1h` (12×5min), `24h` (12×2h), `1w` (7×1day), `1M` (10×3day); status donut; badge counts. Frontend adapter converts buckets to chart shapes with **browser-timezone labels**. Delta % intentionally omitted from MetricCards.
-- `GET /api/admin/activity?page=` — Recent Activity feed
+- Lazy expiry sweep: expireStaleQrCodes() runs at the start of the admin
+  read endpoints (list, detail, export, metrics) and flips time-expired
+  "active" codes to "expired". Time passing never executes code by
+  itself; the sweep is what keeps displayed state honest.
+- Expired is terminal. The UI shows no Activate/Blacklist buttons for
+  expired codes, and the server rejects any status change on a
+  time-expired code (judged by the expiresAt timestamp, not the status
+  column). The expiry lives inside the printed JWT; no database value
+  can revive the signature. The only recovery is generating a new QR.
+- A tamper report promotes a code to "suspicious" only when its current
+  status is "active". A report never downgrades an admin-confirmed
+  "blacklisted" verdict and never resurrects an expired code.
+  Users detect; administrators confirm.
+- Status changes take effect on the very next scan.
 
-## Web Frontend (admin-web — integration COMPLETE)
+## 10. Mobile App (mobile-app workspace)
 
-- `src/services/api.js` was originally a **1,580-line localStorage simulator with zero real HTTP calls**; it is now a real API service with obsolete local mock/storage helpers removed.
-- Dev: Vite proxy `/api` → `http://localhost:3000`. Prod: same-origin (served by Express).
-- Admin session contract: store `{ token, admin }` in tab-scoped `sessionStorage`; backend login returns `{ token, user: { id, fullName, email, role } }` — **map `user` → `admin`**. Separate tabs may sign in as different administrators; closing a tab ends that tab's session.
-- `AdminLayout` revalidates `/api/auth/me` on entry, window focus, visibility return, and every 10 seconds. The Users page refreshes its list on the same focus/10-second cadence so role changes made by another administrator appear without a manual reload.
-- Route guards: `RequireAuth` component gates all dashboard routes; auth pages include Sign in, Register, **Forgot Password, Reset Password**.
-- Pages, all on real API: **Dashboard** (stat cards, 4-tab scan volume chart, status donut, Recent Activity), **QR Codes** (server-side search/filter/pagination, generate form with label, CSV export, detail view with Label and Created By rows; first table column widened to 220px), **Alerts** (photo evidence, GPS formatting, status filter, resolve-only; IDs displayed as `alert.id.slice(0, 8)` and `alert.qrLabel || alert.qrCodeId`), **Users** (search, add, role change, delete), **Settings** (profile edit + password change).
-- Global alert badge count reflects the backend's complete unresolved-alert count, while the notification menu shows the newest real alerts and refreshes on focus/every 10 seconds.
-- Dashboard, QR Codes, Alerts, Users, and Settings show an API error state with a Retry action instead of remaining in a loading state indefinitely.
-- QR detail/status responses preserve the database scan and alert totals, and Alert status responses preserve the related QR information.
-- Dead mock code removed (`handleMarkReviewed`, `adminNotes`, `NotificationsCard`, `ResetPasswordModal`, `UserFormModal`-era leftovers, etc.).
-- Landing Page (`landing-web`): reads `status` / `reason` / `apk` query params only and renders distinct `valid`, `expired`, `invalid`, `suspicious`, and `blacklisted` results; three-state popup (`null` / `'coming-soon'` / `'app-required'`); design tokens: blue `#2563eb`, 14–18px radius, soft shadows.
+- Expo dev build ("VAFPQR" dev client) for development:
+  npx expo start --dev-client -c, connect from the app's development
+  launcher. Expo Go does not work (SDK mismatch was the original reason
+  for the dev build).
+- Release: EAS build, published to GitHub Releases (tag mobile-v0.1.0).
+- Base URL comes from EXPO_PUBLIC_API_BASE_URL in mobile-app/.env
+  (points at the live Render backend). Changing .env requires a Metro
+  restart.
+- Auth: session in expo-secure-store. 401 with a token present means
+  session expired; 401 without a token means bad credentials.
+- Flows: login / register (register redirects to login with a success
+  banner), scan (expo-camera), verify via POST /api/qr/verify/mobile,
+  safe/warning result screens mapped from the five statuses, tamper
+  report (GPS + in-app photo + description + optional prefilled
+  name/contact), scan history from GET /api/scans/history, profile and
+  password screens.
+- Report buttons: warning screen shows Report only when qrId exists
+  (expired/invalid responses carry no qr object). The safe screen also
+  has a Report Tampering button (manual reporting after a green result).
+- All mock code was removed (mockData.js, wait, socialSignIn, security
+  and notification settings screens/functions).
 
-## Mobile App (mobile-app — Expo, IN PROGRESS)
+## 11. Environment Variables (never commit)
 
-**7-step integration plan** (against the live Render backend — no LAN IP):
+Backend (Render):
+- DATABASE_URL, DIRECT_URL (see section 5)
+- QR_JWT_SECRET, AUTH_JWT_SECRET (two separate secrets)
+- ADMIN_EMAIL, ADMIN_PASSWORD (first-admin seed)
+- SUPABASE_URL
+- SUPABASE_SERVICE_KEY : must be the sb_secret_... key. The
+  sb_publishable_... key is silently rejected by Storage RLS.
+- APK_DOWNLOAD_URL : landing page download button target.
 
-| Step | Scope | Status |
-|---|---|---|
-| 1 | Plumbing + Auth (login / register / secure-store session) | ✅ committed (`mobile login, register done`) |
-| 2 | `verifyQRCode` real + result screens (5 statuses) | ✅ Complete |
-| 3 | Tamper report multipart submission | ✅ Complete — mobile E2E verified |
-| 4 | Authenticated server-backed scan history | ✅ Complete |
-| 5 | Profile / password / local avatar | ✅ Complete |
-| 6 | Mass mock cleanup + mobile password reset | ✅ Complete |
-| 7 | EAS preview APK build → GitHub Releases → set `APK_DOWNLOAD_URL` on Render → full E2E rehearsal | ⬜ 21 July |
+Mobile (mobile-app/.env):
+- EXPO_PUBLIC_API_BASE_URL
 
-Hard rules learned during Steps 1–3:
-- `BASE_URL` comes from `EXPO_PUBLIC_API_BASE_URL`; preview/production EAS profiles point to the live Render API. Requests send User-Agent `SecureQRApp/1.0` for telemetry/channel behavior only, never authorization.
-- Extract the token from the scanned URL with a **regex** — `URL.searchParams` is unimplemented in React Native's JSC and throws.
-- Map all five backend statuses (`valid` / `expired` / `invalid` / `blacklisted` / `suspicious`) to the safe/warning screens. No fabricated threat data (`sslValid`, fake report counts, `riskLevel`) — display only what the server returns.
-- Multipart tamper report: use plain `fetch` and **do not set a `Content-Type` header** — multer needs the auto-generated boundary.
-- The register flow **redirects to login with a success banner** (no auto-login). Field name is `fullName` everywhere (a `name` vs `fullName` mismatch caused silent failures — and never write `catch {}` without the error parameter).
-- UI: `KeyboardAvoidingView` on form screens; bottom navigator padded with `useSafeAreaInsets()` (Android gesture bar overlap).
-- Step 6 removed the mobile mock data, fake social sign-in, scan fallback, and unsupported security claims after their consumers were replaced.
-- Scan history is never stored as a second local source of truth. The backend writes `ScanLog.userId`; Dashboard and History read the signed-in user's server records, so reinstalling or changing devices does not lose the history.
-- Tamper reports require a signed-in account, evidence photo, and description. Reporter identity comes from the authenticated backend user rather than editable form data.
-- Password reset is channel-aware: admin-web can create and consume reset links only for `admin` accounts; regular `user` accounts are directed to the mobile app. The backend enforces the role check on both forgot-password and reset-password requests.
-- Admin read endpoints run the implemented lazy `expireStaleQrCodes()` sweep before listing/exporting/aggregating QR records.
+## 12. Remaining Work (as of 22 July)
 
-## Render Deployment
+1. Client demo (22 July): pre-warm GET /api/health first (Render cold
+   start is about 30 seconds). Obtain client approval of the
+   app-required model on the record.
+2. Sprint 5 support through 31 July: assist Vanessa, fix bugs.
+3. Repo hygiene: fix the root package.json (section 3), decide the fate
+   of landing-page-version-2, decide helmet (section 4).
+4. Baseline document amendments (full detail in Design Change Register
+   v2.2, section 10): PMP WBS 5.1.2 + Design 5.2.2 + Design 6.5 (access
+   model), Design 4.3 data dictionary + ERD, R&A 4.1 actors + FR-03
+   allowlist + FR-07 GPS fallback, Design 3.3/6.3 stack tables.
+5. Documents: User Manual, Installation and Deployment Guide, Final
+   Project Report (include the deviations and limitations below).
 
-- Root Directory = `backend`; Start = `npm start` (in a monorepo, `npm start` without `--workspace=` at repo root launches the wrong package — root dir setting avoids this).
-- Build command chains: `npm install` → build `landing-web` (`--include=dev`, since Vite is a devDependency under `NODE_ENV=production`) → copy `dist` → `backend/landing-dist` → build `admin-web` → copy → `backend/admin-dist` → `npx prisma generate` (Method B: everything lives under `backend/` at runtime).
-- **Deploy branch = `main`.** Feature branches (`landing-integration`, `frontend-integration`) are merged in; confirm the dashboard setting whenever a temporary branch deploy was used.
-- **P2022 (`column does not exist`) after a schema change = stale Prisma Client on Render** → "Clear build cache & deploy". Run `npx prisma generate` explicitly even when `db push` says "already in sync".
-- Env vars live in the Render dashboard, never in code.
+## 13. Known Limitations (document, do not solve)
 
-**Demo-day checklist (22 July):** hit `GET /api/health` ~5 minutes beforehand to wake the free-tier instance (cold start); rescan flow rehearsed end-to-end (generate → print/screen → phone camera → landing, and app scan → result → tamper report → alert visible in dashboard).
+1. Post-install token handoff: users must rescan after installing the app.
+2. iOS: cannot sideload the APK; sees the browser verdict but can never
+   reach the destination.
+3. Baseline amendments outstanding for the access model (see 12.4).
+4. Logical vs physical schema types (uuid/varchar/CHECK vs text with
+   application-level validation) - see schema-reconciliation.md.
+5. Render free-tier cold start (about 30 s) can violate the 3-second
+   redirect target on the first request only.
+6. helmet documented but not installed (decision pending).
+7. Not implemented from R&A: FR-03 destination allowlist (any http/https
+   URL accepted at generation; low risk because generation is admin-only)
+   and FR-07 manual GPS entry fallback (GPS is simply optional).
+8. No downtime monitoring (Design 6.4.6 promised a 3-minute alert).
+   Backups are delegated to managed Supabase.
 
-## Environment Variables (never commit)
+## 14. Out of Scope (agreed, do not build)
 
-Backend (Render): `DATABASE_URL` (Session pooler), `DIRECT_URL` (Direct), `QR_JWT_SECRET`, `AUTH_JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (**`sb_secret_...` only** — publishable key fails RLS on Storage uploads), `APK_DOWNLOAD_URL` (set after Step 7).
-Mobile: `EXPO_PUBLIC_API_BASE_URL` = `https://ict302-b77o.onrender.com`.
-
-## Remaining Work (in order, as of 20 July)
-
-1. **Mobile Step 7**: EAS preview standalone APK → GitHub Releases → set `APK_DOWNLOAD_URL` on Render → full E2E rehearsal.
-2. **22 July**: client demo (pre-warm via `/api/health`).
-3. **Repo hygiene**: restore the corrupted root `package.json` (see Repository Structure warning); decide fate of `landing-page-version-2`.
-4. **Sprint 5 support (through 31 July)**: assist Vanessa's system testing; bug fixes.
-5. **Docs**: User Manual, Installation/Deployment Guide, Final Project Report; amend PMP WBS 5.1.2 ("Continue to destination" button) to match the app-required decision.
-
-## Security & Quality Requirements
-
-- Passwords hashed with bcrypt — never stored or logged in plain text
-- Alert photo uploads: image MIME types only, file size limit enforced (risk R14)
-- Redirect latency ≤ 3 seconds (app path)
-- Expired and blacklisted tokens blocked 100% of the time; every scan attempt logged, including failures
-- Last-admin demotion guard; admins must be demoted before deletion; no self-role-change
-- No hardcoded credentials anywhere (incl. login screen placeholders); never commit secrets
-
-## Out of Scope — do not build
-
-- ISO 18004 standard extension · time-based redirect service (optional extras)
+- ISO/IEC 18004 extension, time-based redirect service (optional extras)
 - iOS App Store / Play Store distribution
-- Physical protection of printed codes (detect-and-respond only)
+- Physical protection of printed codes (detect and respond only)
 - Browser path to the destination URL (app-required decision)
-- Standalone Analytics / Security dashboard pages (old 8-item sidebar dropped)
-- Scan-volume-spike anomaly detection
-- Real email delivery for password reset (demo returns the link in the response)
-- Migrating auth to Supabase Auth
-- **Deferred to `future-work.md`** (documented, not built): account Suspend/Restore, email notification preferences (nodemailer), admin-initiated password reset, 2FA
+- Real email delivery for password reset
+- Migrating auth to Supabase Auth (QR tokens cannot use it; custom auth
+  is complete)
+- Deferred to future-work: account suspend/restore, email notification
+  preferences, admin-initiated password reset, 2FA
 
-## Known Limitations (document in final report, don't solve)
+## 15. Hard-Won Lessons (violating these caused real failures)
 
-1. App cannot auto-receive the scanned token post-install — users must rescan after installing
-2. iOS users cannot sideload the APK; they can see the verification result but can never reach the destination URL
-3. Team PMP WBS 5.1.2 ("Continue to destination" button) must be amended to match the app-required decision so test cases stay consistent
+1. Never use multer diskStorage on Render (ephemeral disk). Always
+   memoryStorage plus Supabase Storage upload. Store only the URL.
+2. Identify Supabase connections by hostname, never by port.
+3. Prisma 7: URLs in prisma.config.ts (P1012 otherwise); generator must
+   be prisma-client-js explicitly; @prisma/adapter-pg is mandatory;
+   run npx prisma generate explicitly even when db push says "already
+   in sync" and after any node_modules wipe.
+4. P2022 on Render means a stale Prisma Client: redeploy with Clear
+   build cache.
+5. Storage uploads need the sb_secret key; the publishable key fails
+   silently under RLS.
+6. React Native: URL.searchParams is unimplemented in JSC - extract
+   tokens with a regex. SDK 57 fetch rejects the { uri, name, type }
+   FormData shorthand - wrap files with new File(uri) from
+   expo-file-system. Never set Content-Type manually on multipart
+   (fetch must generate the boundary).
+7. Bottom navigation needs useSafeAreaInsets() padding or it collides
+   with the Android gesture bar. Keyboard avoidance lives in the shared
+   AppScreen component (KeyboardAvoidingView), not per screen.
+8. Files over about 150 lines must be created in an editor (Notepad /
+   VS Code), never with a Git Bash heredoc (buffer corruption).
+9. npm start without --workspace= launches the wrong workspace.
+10. Watch for nested ICT302/ICT302 folders when cloning; check pwd.
+11. Do not reintroduce CRA/react-scripts. Do not run npm audit fix
+    --force (it breaks Expo version alignment).
+12. Errors must never be swallowed: catch (err), console.error, and
+    surface err.message to the user instead of a generic string.
 
-## Hard-Won Lessons (violating these caused real failures)
+## 16. Development Workflow and Communication
 
-1. **Never use multer `diskStorage` on Render** — ephemeral filesystem. `memoryStorage` + Supabase Storage from the start.
-2. **Two DB connection strings, identified by hostname** — never by port (Feb 2025 Supavisor change broke the old port rule).
-3. **Prisma 7 breaking changes**: URLs in `prisma.config.ts` (else P1012); generator explicitly `prisma-client-js`; `@prisma/adapter-pg` required; run `npx prisma generate` explicitly (also after every `rm -rf node_modules` — workspace deps are hoisted to the root `node_modules`).
-4. **P2022 on Render = stale Prisma Client** → clear build cache & redeploy.
-5. **Never edit the schema in the Supabase Table Editor** — causes drift from `db push`.
-6. **Supabase Storage uploads need the `sb_secret_...` key**; store only the photo **URL** in Alert.
-7. **401 handler needs `&& token`** — otherwise wrong-password 401s trigger the session-expiry redirect. Related: wrong-current-password on password change returns **400**, not 401.
-8. **Git Bash heredoc corruption**: files of 150+ lines must be created via an editor, never `cat << EOF`.
-9. Watch for nested `ICT302/ICT302` folders when cloning — verify the working directory first.
-10. The frontend is the **Figma Make export (Vite + JSX)** — never reintroduce CRA/react-scripts, and never assume TypeScript.
-11. **React Native**: `URL.searchParams` doesn't exist in JSC (use regex); multipart `fetch` must omit `Content-Type`; field contract is `fullName`.
-12. The Landing Page must never call the verify API itself — the server already logged the scan; a second call double-counts ScanLog.
-
-## Development Environment & Workflow
-
-- OS: Windows; shell: **Git Bash** (not cmd/PowerShell). API testing: Postman.
-- Repo: `RoyYoo716/ICT302`; run `git pull` at the start of every session.
-- **Claude session pattern: clone the working branch at session start** (`git clone --depth 1 --branch <branch> …`) and read files directly from the repo — the repo is the source of truth. Search past conversations before asking Roy to re-paste anything Claude previously produced.
-- Follow the **Remaining Work** order above.
-
-## Communication Preferences
-
-- Respond in Korean; code and comments in English.
-- Explain concepts from first principles with an analogy before implementation steps; confirm understanding on major architectural decisions before executing.
-- Give **exact file paths and line-level locations** — never "same pattern as before".
-- **Code edit instructions must always show the complete before-code and complete after-code blocks verbatim** — never summaries like "keep the existing props".
-- Prefer one decisive recommendation with reasoning over a menu of options; no hedging ("probably", "maybe") about code Claude itself designed.
+- OS: Windows. Shell: Git Bash. API testing: Postman.
+- Run git pull at the start of every session.
+- Claude clones the live repo branch at session start and reads files
+  directly; the repo is the authoritative source over conversation
+  memory.
+- Code edit instructions always show the complete before-code and the
+  complete after-code verbatim. No summaries like "keep the existing
+  props".
+- Explain concepts from first principles with an analogy before
+  implementation steps. Confirm before major architectural decisions.
+- Conversation in Korean; code and comments in English.
