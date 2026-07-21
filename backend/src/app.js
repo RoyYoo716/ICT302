@@ -1,4 +1,5 @@
 // app.js — Assembles the Express app (does not open the port yet).
+const { requireAuth, requireAdmin } = require('./middleware/auth');
 
 const express = require('express');
 const cors = require('cors');
@@ -16,10 +17,10 @@ app.get('/api/health', (req, res) => {
 
 // Feature routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/qr', require('./routes/qr'));
-app.use('/api/scans', require('./routes/scan'));
-app.use('/api/alert', require('./routes/alert'));
-app.use('/api/admin', require('./routes/admin'));
+app.use('/api/qr', requireAuth, require('./routes/qr'));
+app.use('/api/scans', requireAuth, require('./routes/scan'));
+app.use('/api/alert', requireAuth, require('./routes/alert'));
+app.use('/api/admin', requireAuth, require('./routes/admin'));
 
 // Static: Landing Page (Vite build copied into backend/landing-dist at deploy).
 // Browser users arrive here via the redirect from GET /api/qr/verify.
