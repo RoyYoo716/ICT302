@@ -5,8 +5,11 @@ const SESSION_KEY = 'vafpqr.admin.session'
 // step by step. Session shape becomes { token, admin }.
 // ============================================================
 
-// Read the API URL dynamically from Vite's environment config
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''; 
+// Check the browser window context at runtime
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? '' // Local coding remains perfectly safe
+  : 'https://security-ewl0.onrender.com';
+
 
 // Read the JWT saved at login. Returns null when logged out.
 function getAuthToken() {
