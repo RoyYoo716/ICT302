@@ -5,6 +5,9 @@ const SESSION_KEY = 'vafpqr.admin.session'
 // step by step. Session shape becomes { token, admin }.
 // ============================================================
 
+// Read the API URL dynamically from Vite's environment config
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''; 
+
 // Read the JWT saved at login. Returns null when logged out.
 function getAuthToken() {
   const session = readSession()
@@ -19,7 +22,7 @@ function getAuthToken() {
 async function request(path, { method = 'GET', body, headers } = {}) {
   const token = getAuthToken()
 
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE_URL}/api${path}`, {
     method,
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -467,7 +470,7 @@ export async function updateQRCodeStatus(id, status) {
 // Purpose: export all QR Code records as a CSV file; backend should return all records, not one page.
 export async function exportQRCodesCsv() {
   const token = getAuthToken()
-  const response = await fetch('/api/admin/qrcodes/export', {
+  const response = await fetch(`${API_BASE_URL}/api/admin/qrcodes/export`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!response.ok) {
