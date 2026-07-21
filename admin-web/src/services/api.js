@@ -22,7 +22,8 @@ function getAuthToken() {
 async function request(path, { method = 'GET', body, headers } = {}) {
   const token = getAuthToken()
 
-  const response = await fetch(`${API_BASE_URL}/api${path}`, {
+  // Change this line to use standard quotes and a plus sign
+  const response = await fetch(API_BASE_URL + '/api' + path, {
     method,
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -470,7 +471,8 @@ export async function updateQRCodeStatus(id, status) {
 // Purpose: export all QR Code records as a CSV file; backend should return all records, not one page.
 export async function exportQRCodesCsv() {
   const token = getAuthToken()
-  const response = await fetch(`${API_BASE_URL}/api/admin/qrcodes/export`, {
+  // Change this line to use standard quotes and a plus sign
+  const response = await fetch(API_BASE_URL + '/api/admin/qrcodes/export', {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!response.ok) {
